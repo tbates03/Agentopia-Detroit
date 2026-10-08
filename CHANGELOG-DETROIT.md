@@ -1,5 +1,21 @@
 # Agentopia Detroit Changelog
 
+## v1.8.0-RC2 — Civilization Scale & Persistence
+
+- Added SQLite indexed civilization state with WAL, foreign keys and citizen/entity indexes.
+- Added append-only civilization event ledger with stable IDs and dedupe keys.
+- Added relevance-driven active-AI cohort selection with critical-leader/faction pinning.
+- Preserved deterministic RC1 active-cohort fallback.
+- Integrated JSON/persona-to-SQLite synchronization into growth preflight.
+- Added persona-promotion ledger events.
+- Added civilization invariant checks.
+- Added 100K-citizen / 1K-persona / 10K-event headless stress harness.
+- Expanded the growth regression audit from 23 to 28 checks.
+- GitHub Actions validation: 28/28 checks passed; 100K stress completed in 0.842s.
+- Private live Detroit remains unmigrated pending deliberate RC2 promotion.
+
+
+
 ## 1.8.0-RC1 - Growth Architecture Audit
 
 This release candidate audits the Detroit fork against the original Agentopia assumptions and removes current hard blockers to long-run civic growth.
