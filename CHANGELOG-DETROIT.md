@@ -80,3 +80,13 @@ The telemetry record intentionally excludes prompts, responses, credentials and 
 - added contributor provenance requirements for cultural/regional context
 - separated public research/evaluation consent from model training/fine-tuning consent
 - documented Agentopia World League as a transparent community-learning layer for TAi — Transparent AI
+
+
+### World League weather, seasons and cultural calendar research
+
+- added standalone World League / TAi research webpage
+- added weather and environmental workload context to the roadmap
+- added place-appropriate seasonality rather than assuming Detroit/Northern Hemisphere patterns
+- added support direction for up to 50 widely celebrated holidays, observances, festivals and culturally important dates per represented community
+- required contributor/community/source validation instead of TAi guessing cultural calendars
+- documented that culture/language groups are never ranked against one another; task/model behavior is the research target
