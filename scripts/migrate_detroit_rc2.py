@@ -17,7 +17,8 @@ from typing import Any
 SCRIPT = Path(__file__).resolve()
 PUBLIC_ROOT = SCRIPT.parents[1]
 DEFAULT_LIVE = Path(os.environ.get("AGENTOPIA_LIVE", str(Path.home() / "AI" / "Agentopia"))).expanduser()
-PLIST = Path.home() / "Library" / "LaunchAgents" / "com.agentopia.detroit.persistent.plist"
+LABEL = "com.agentopia.detroit.persistent"
+PLIST = Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"
 
 CODE_DIRS = ("src", "scripts")
 TOP_FILES = (
@@ -28,6 +29,8 @@ TOP_FILES = (
     "AGENTOPIA-FULL-SYSTEM-CHECK.command",
 )
 PROCESS_PATTERNS = (
+    "scripts/start_detroit_persistent_service.sh",
+    "scripts/agentopia_watchdog.sh",
     "scripts/run_detroit_persistent.py",
     "[Pp]ython.*scripts/run_world.py.*detroit_persistent",
     "scripts/detroit_twin_daemon.py",
@@ -35,6 +38,8 @@ PROCESS_PATTERNS = (
     "scripts/detroit_humanity_daemon.py",
     "scripts/detroit_world_context_daemon.py",
     "scripts/agentopia_city_pulse.py",
+    "scripts/start_detroit_cyber_async.sh",
+    "scripts/open_agentopia_flight_recorder_console.sh",
     "live_world/server.py",
 )
 REQUIRED_RC2 = (
@@ -160,44 +165,104 @@ def pids_for(pattern: str) -> list[int]:
     return out
 
 
-def stop_live(live: Path, timeout_seconds: float = 15.0) -> None:
+def _remaining_agentopia_pids() -> list[int]:
+    remaining: set[int] = set()
+    for pattern in PROCESS_PATTERNS:
+        remaining.update(pids_for(pattern))
+    return sorted(pid for pid in remaining if pid != os.getpid())
+
+
+def _process_diagnostics(pids: list[int]) -> str:
+    if not pids:
+        return ""
+    cp = subprocess.run(
+        ["ps", "-o", "pid=,ppid=,etime=,command=", "-p", ",".join(str(x) for x in pids)],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    return (cp.stdout or "").strip()
+
+
+def stop_live(live: Path, timeout_seconds: float = 20.0) -> None:
     print("\n=== PAUSING LIVE DETROIT ===")
-    if shutil.which("launchctl") and PLIST.exists():
+    domain = f"gui/{os.getuid()}"
+
+    # Stop the supervisor first so it cannot recreate children while we drain.
+    if shutil.which("launchctl"):
         subprocess.run(
-            ["launchctl", "bootout", f"gui/{os.getuid()}", str(PLIST)],
+            ["launchctl", "bootout", f"{domain}/{LABEL}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            check=False,
         )
+        if PLIST.exists():
+            subprocess.run(
+                ["launchctl", "bootout", domain, str(PLIST)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
 
-    targeted: set[int] = set()
-    for pattern in PROCESS_PATTERNS:
-        targeted.update(pids_for(pattern))
-
-    for pid in sorted(targeted):
+    targeted = _remaining_agentopia_pids()
+    if targeted:
+        print("Stopping Agentopia processes:", ", ".join(str(x) for x in targeted))
+    for pid in targeted:
         try:
             os.kill(pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
+        except PermissionError:
+            print(f"WARNING: permission denied sending SIGTERM to PID {pid}")
 
-    deadline = time.monotonic() + timeout_seconds
+    deadline = time.monotonic() + max(5.0, timeout_seconds * 0.65)
+    remaining: list[int] = []
     while time.monotonic() < deadline:
-        remaining = []
-        for pattern in PROCESS_PATTERNS:
-            remaining.extend(pids_for(pattern))
-        remaining = sorted(set(remaining))
+        remaining = _remaining_agentopia_pids()
         if not remaining:
             break
         time.sleep(0.5)
-    else:
+
+    # Agentopia-owned processes that ignore TERM are safe to force-stop here.
+    # We never use a broad killall/pkill pattern outside the explicit list above.
+    if remaining:
+        print("TERM grace expired; force-stopping remaining Agentopia PIDs:", ", ".join(str(x) for x in remaining))
+        for pid in remaining:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            except PermissionError:
+                print(f"WARNING: permission denied sending SIGKILL to PID {pid}")
+
+        kill_deadline = time.monotonic() + max(3.0, timeout_seconds * 0.35)
+        while time.monotonic() < kill_deadline:
+            remaining = _remaining_agentopia_pids()
+            if not remaining:
+                break
+            time.sleep(0.4)
+
+    if remaining:
+        diag = _process_diagnostics(remaining)
+        if diag:
+            print("\nSurviving Agentopia process diagnostics:\n" + diag)
         raise RuntimeError(
-            "live Agentopia processes did not stop cleanly; migration aborted before code/state writes"
+            "live Agentopia processes still survived the guarded stop; "
+            "migration aborted before backup/code/state writes"
         )
 
     stopper = live / "scripts" / "stop_detroit_llama.sh"
     if stopper.exists():
-        subprocess.run([str(stopper)], cwd=str(live), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            [str(stopper)],
+            cwd=str(live),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
 
-    print("Live Detroit paused cleanly.")
+    print("Live Detroit paused cleanly; supervisor and child processes are stopped.")
 
 
 def copytree_clean(source: Path, dest: Path) -> None:
@@ -500,7 +565,11 @@ def main() -> int:
                 "Persistent world backup is preserved at: " + str(backup_root / "detroit_persistent"),
                 file=sys.stderr,
             )
-        print("Detroit remains paused for inspection.", file=sys.stderr)
+        print(
+            "Migration did not proceed past its safety gate. If the failure occurred during "
+            "shutdown, use the survivor diagnostics above; no RC2 code/state migration was performed.",
+            file=sys.stderr,
+        )
         return 1
 
 
