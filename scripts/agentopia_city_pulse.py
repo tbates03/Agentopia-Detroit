@@ -22,9 +22,10 @@ ENGINE_LOGS = [
 ]
 HEARTBEAT = ROOT / "runtime" / "engine_heartbeat.json"
 BOOT_STATE = ROOT / "runtime" / "boot_state"
+RIGHT_SIZING_LOG = ROOT / "runtime" / "right_sizing_requests.jsonl"
 HOST = "127.0.0.1"
 PORT = 8767
-VERSION = "1.6.1.3"
+VERSION = "1.7.4.5.1-right-sizing"
 MODEL_SPECS = [
     ("social", "Social 350M", 8084),
     ("citizen", "Citizen 1.2B", 8081),
@@ -204,6 +205,132 @@ def model_pool(name: str, label: str, port: int) -> dict[str, Any]:
     return {"name": name, "label": label, "port": port, "healthy": bool(healthy), "busy": busy, "slots": total}
 
 
+def _run_text(cmd: list[str], timeout: float = 1.2) -> str:
+    try:
+        cp = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=timeout)
+        return cp.stdout.strip() if cp.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def system_performance() -> dict[str, Any]:
+    """Best-effort host CPU and memory telemetry without third-party packages."""
+    cpu_count = max(1, int(os.cpu_count() or 1))
+    cpu_pct = None
+    raw = _run_text(["ps", "-A", "-o", "%cpu="])
+    if raw:
+        try:
+            total_cpu = sum(float(x.strip()) for x in raw.splitlines() if x.strip())
+            cpu_pct = round(max(0.0, min(100.0, total_cpu / cpu_count)), 1)
+        except Exception:
+            cpu_pct = None
+    if cpu_pct is None:
+        try:
+            cpu_pct = round(max(0.0, min(100.0, (os.getloadavg()[0] / cpu_count) * 100.0)), 1)
+        except Exception:
+            pass
+
+    total = used = None
+    if sys.platform == "darwin":
+        try:
+            total = int(_run_text(["sysctl", "-n", "hw.memsize"]) or 0)
+            page_size = int(_run_text(["sysctl", "-n", "hw.pagesize"]) or 4096)
+            vm = _run_text(["vm_stat"])
+            pages = {}
+            for line in vm.splitlines():
+                m = re.match(r"([^:]+):\s+(\d+)", line)
+                if m:
+                    pages[m.group(1).strip().lower()] = int(m.group(2))
+            free_pages = sum(pages.get(k, 0) for k in ("pages free", "pages speculative"))
+            if total:
+                used = max(0, total - free_pages * page_size)
+        except Exception:
+            total = used = None
+    elif Path("/proc/meminfo").exists():
+        try:
+            vals = {}
+            for line in Path("/proc/meminfo").read_text(encoding="utf-8", errors="replace").splitlines():
+                if ":" not in line:
+                    continue
+                k, v = line.split(":", 1)
+                vals[k] = int(v.strip().split()[0]) * 1024
+            total = vals.get("MemTotal")
+            avail = vals.get("MemAvailable")
+            if total is not None and avail is not None:
+                used = max(0, total - avail)
+        except Exception:
+            total = used = None
+
+    mem_pct = round((used / total) * 100.0, 1) if total and used is not None else None
+    gb = 1024.0 ** 3
+    return {
+        "cpu_percent": cpu_pct,
+        "cpu_count": cpu_count,
+        "memory_total_gb": round(total / gb, 1) if total else None,
+        "memory_used_gb": round(used / gb, 1) if used is not None else None,
+        "memory_percent": mem_pct,
+        "platform": sys.platform,
+    }
+
+
+def right_sizing_requests(max_bytes: int = 4_000_000, max_lines: int = 20000) -> dict[str, Any]:
+    """Aggregate privacy-safe inference events emitted by src.utils."""
+    rows = tail_lines(RIGHT_SIZING_LOG, max_bytes=max_bytes, max_lines=max_lines)
+    now = time.time()
+    tiers = {"350M": [], "1.2B": [], "2.6B": [], "specialist": [], "other": []}
+    recent_60 = {k: 0 for k in tiers}
+    success = 0
+    parsed = 0
+    latencies = []
+    for line in rows:
+        try:
+            obj = json.loads(line)
+        except Exception:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        tier = str(obj.get("tier") or "other")
+        if tier not in tiers:
+            tier = "other"
+        try:
+            latency = max(0.0, float(obj.get("latency_ms", 0) or 0))
+        except Exception:
+            latency = 0.0
+        try:
+            ts = float(obj.get("unix", 0) or 0)
+        except Exception:
+            ts = 0.0
+        tiers[tier].append(latency)
+        latencies.append(latency)
+        parsed += 1
+        if obj.get("success") is True:
+            success += 1
+        if ts and now - ts <= 60:
+            recent_60[tier] += 1
+
+    core_total = sum(len(tiers[k]) for k in ("350M", "1.2B", "2.6B"))
+    all_total = max(1, parsed)
+    distribution = []
+    for tier in ("350M", "1.2B", "2.6B", "specialist", "other"):
+        vals = tiers[tier]
+        distribution.append({
+            "tier": tier,
+            "requests": len(vals),
+            "share_percent": round((len(vals) / all_total) * 100.0, 1) if parsed else 0.0,
+            "avg_latency_ms": round(sum(vals) / len(vals), 1) if vals else None,
+            "recent_60s": recent_60[tier],
+        })
+    return {
+        "requests": parsed,
+        "successful": success,
+        "success_percent": round((success / parsed) * 100.0, 1) if parsed else None,
+        "avg_latency_ms": round(sum(latencies) / len(latencies), 1) if latencies else None,
+        "core_requests": core_total,
+        "distribution": distribution,
+        "window_note": f"latest {parsed:,} uncached inference calls" if parsed else "waiting for uncached inference calls",
+    }
+
+
 def newest_world_write() -> tuple[float | None, str | None]:
     candidates: list[Path] = []
     try:
@@ -308,6 +435,19 @@ def snapshot() -> dict[str, Any]:
     write_age, write_source = newest_world_write()
     models = [model_pool(*spec) for spec in MODEL_SPECS]
     hb_age = heartbeat_age()
+    perf = system_performance()
+    routing = right_sizing_requests()
+    core_names = {"social", "citizen", "strategy"}
+    busy = sum(int(m.get("busy") or 0) for m in models if m.get("name") in core_names)
+    slots = sum(int(m.get("slots") or 0) for m in models if m.get("name") in core_names)
+    performance = {
+        **perf,
+        **routing,
+        "core_busy_slots": busy,
+        "core_total_slots": slots,
+        "core_slot_percent": round((busy / slots) * 100.0, 1) if slots else None,
+        "local_core_models": 3,
+    }
     return {
         "version": VERSION,
         "generated_unix": time.time(),
@@ -320,6 +460,7 @@ def snapshot() -> dict[str, Any]:
         "progress": phase_progress(lines, stage, total),
         "active_citizens": total,
         "models": models,
+        "performance": performance,
         "world_write": {
             "age": round(write_age, 1) if write_age is not None else None,
             "source": write_source,
