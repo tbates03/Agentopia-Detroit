@@ -243,11 +243,11 @@ CHECKS = [
         "Engine heartbeat is written before growth, relevance, and World initialization so reboot startup never appears stale.",
     ),
     (
-        "heartbeat_verifier_waits_for_new_pid",
+        "heartbeat_verifier_uses_live_process_identity",
         "critical",
         "scripts/apply_rc2_post_reboot_hardening.py",
-        "fresh RC2 heartbeat did not appear for engine pid=",
-        "Live hardening waits for the newly started engine heartbeat instead of racing the process startup.",
+        "no fresh heartbeat from a live RC2 engine process",
+        "Live hardening validates the heartbeat PID itself against the real run_detroit_persistent.py command instead of freezing a transient startup PID.",
     ),
     (
         "observer_disconnects_are_normal",
