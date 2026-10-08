@@ -786,6 +786,53 @@ def _safe_load_pickle(
     return None
 
 
+# AGENTOPIA_RIGHT_SIZING_TELEMETRY_START
+_right_sizing_telemetry_lock = threading.Lock()
+
+
+def _right_sizing_tier(model: str) -> str:
+    """Map a configured model name to the public right-sizing tier label."""
+    name = str(model or "").lower()
+    if "social" in name or "350m" in name:
+        return "350M"
+    if "citizen" in name or "1.2b" in name:
+        return "1.2B"
+    if "strategy" in name or "2.6b" in name:
+        return "2.6B"
+    if "cyber" in name or "7b" in name:
+        return "specialist"
+    return "other"
+
+
+def _record_right_sizing_request(model: str, latency_ms: float, success: bool, call_kwargs: dict) -> None:
+    """Append one privacy-safe LLM call record for the Live World performance panel.
+
+    The record intentionally contains no prompt, response, credential, or citizen text.
+    Cache hits are not recorded because they do not consume model inference.
+    """
+    try:
+        runtime = get_project_root() / "runtime"
+        runtime.mkdir(parents=True, exist_ok=True)
+        event = {
+            "unix": round(time.time(), 3),
+            "model": str(model or "unknown"),
+            "tier": _right_sizing_tier(model),
+            "latency_ms": round(max(0.0, float(latency_ms)), 1),
+            "success": bool(success),
+            "model_type": str(call_kwargs.get("model_type") or ""),
+            "nth_generation": int(call_kwargs.get("nth_generation", 0) or 0),
+        }
+        path = runtime / "right_sizing_requests.jsonl"
+        line = json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\\n"
+        with _right_sizing_telemetry_lock:
+            with path.open("a", encoding="utf-8") as fh:
+                fh.write(line)
+    except Exception:
+        # Observability must never interrupt the simulation.
+        pass
+# AGENTOPIA_RIGHT_SIZING_TELEMETRY_END
+
+
 def cached(func):
     def wrapper(*args, **kwargs):
         force_regenerate = kwargs.pop("force_regenerate", False)
@@ -847,7 +894,18 @@ def cached(func):
                         print(key_str)
                         _log_to_world_logger(key_str)
 
-        result = func(*args, **kwargs)
+        telemetry_started = time.monotonic() if func.__name__ == "generate_with_fc" else None
+        try:
+            result = func(*args, **kwargs)
+        except Exception:
+            if telemetry_started is not None:
+                model = kwargs.get("model") or (args[0] if args else "unknown")
+                _record_right_sizing_request(model, (time.monotonic() - telemetry_started) * 1000.0, False, kwargs)
+            raise
+        if telemetry_started is not None:
+            model = kwargs.get("model") or (args[0] if args else "unknown")
+            success = result is not None and result not in ("", _ERROR_RESPONSE)
+            _record_right_sizing_request(model, (time.monotonic() - telemetry_started) * 1000.0, success, kwargs)
         if result is not None:
             delta[key] = result
             # Batch flush: write delta to shard every _FLUSH_EVERY_N misses
