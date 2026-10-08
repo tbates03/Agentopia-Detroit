@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "pack_id": "example-native-language-workflow",
+  "title": "Example native-language business workflow",
+  "contributors": [
+    {
+      "github": "your-github-name",
+      "role": "author/reviewer"
+    }
+  ],
+  "provenance": {
+    "basis": [
+      "professional_experience",
+      "fluent_language_review"
+    ],
+    "notes": "Replace this example with a truthful explanation of how the contributor knows and validated this workflow."
+  },
+  "tasks": [
+    {
+      "task_id": "example-task-01",
+      "domain": "business operations",
+      "occupation": "workflow coordinator",
+      "language": {
+        "bcp47": "es-CO",
+        "name": "Español (Colombia)"
+      },
+      "native_task": "Reemplace este texto con una tarea real escrita como se realizaría en el idioma y contexto local.",
+      "english_summary": "Replace this with an optional English maintainer summary.",
+      "expected_output": "A clearly defined, testable output.",
+      "evaluation": "Explain exactly how a reviewer or automated test can determine whether the result is correct.",
+      "regional_context": "Explain only the regional context that materially changes the workflow.",
+      "source_notes": "Use synthetic or redistributable source material only."
+    }
+  ],
+  "consent": {
+    "public_research_evaluation": true,
+    "model_training_finetuning": false
+  }
+}
