@@ -1,0 +1,40 @@
+name: World League Validation
+
+on:
+  pull_request:
+    paths:
+      - "research/**"
+      - "LEADERBOARD.md"
+      - "scripts/build_leaderboard.py"
+      - "scripts/export_world_beacon.py"
+  push:
+    branches: [main]
+    paths:
+      - "research/**"
+      - "LEADERBOARD.md"
+      - "scripts/build_leaderboard.py"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate Python
+        run: python -m py_compile scripts/build_leaderboard.py scripts/export_world_beacon.py
+      - name: Validate submission JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in list(Path("research/submissions").glob("*.json")) + list(Path("research/packs").glob("*.json")):
+              json.loads(path.read_text(encoding="utf-8"))
+              print("OK", path)
+          PY
+      - name: Check generated leaderboard
+        run: python scripts/build_leaderboard.py --check
