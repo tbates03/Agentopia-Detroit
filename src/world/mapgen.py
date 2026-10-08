@@ -14,7 +14,7 @@ Returned schema:
 Private homes are handled separately by LocationStore.ensure().
 """
 
-from typing import Dict
+from typing import Dict, List, Optional
 
 from src.config import get_config
 
@@ -46,7 +46,10 @@ def _validate_locations_response(response: str, **kwargs) -> dict:
 
 
 def generate_locations_via_llm(
-    world_cfg: Dict, opts: Dict, agents_summary: str
+    world_cfg: Dict,
+    opts: Dict,
+    agents_summary: str,
+    avoid_names: Optional[List[str]] = None,
 ) -> Dict[str, Dict]:
     """Generate a public map via LLM.
 
@@ -78,6 +81,13 @@ def generate_locations_via_llm(
     # Build prompt
     lang_hint = "Chinese" if language in ("zh", "cn") else "English"
     world_setting = get_world_setting(world_name)
+    avoid_names = sorted({str(x).strip() for x in (avoid_names or []) if str(x).strip()})
+    avoid_block = (
+        "\nExisting public location names that MUST NOT be reused:\n"
+        + "\n".join(f"- {name}" for name in avoid_names[:200])
+        if avoid_names
+        else ""
+    )
 
     prompt = f"""You are designing a public location map for a role-play simulation world.
 
@@ -90,6 +100,7 @@ Number of locations: {n_locations}
 
 # Characters in this world
 {agents_summary}
+{avoid_block}
 
 Requirements:
 1. Generate exactly {n_locations} public locations that fit this world's setting
@@ -101,7 +112,8 @@ Requirements:
 3. Mix of sizes: roughly 50% small, 35% medium, 15% large
 4. Do NOT include private homes
 5. Avoid real-world brand names or proper nouns
-6. IMPORTANT: All strings must be valid JSON. Escape any quotes inside strings with backslash (e.g., "sign says \\"Hello\\"" not "sign says "Hello"")
+6. Do not reuse any location name listed in the existing-location block
+7. IMPORTANT: All strings must be valid JSON. Escape any quotes inside strings with backslash (e.g., "sign says \\"Hello\\"" not "sign says "Hello"")
 
 Output ONLY valid JSON in this format (use actual descriptive location names, NOT placeholder names like "Location1"):
 {{"public": {{"Cafeteria": {{"display_name": "Cafeteria", "size": "large", "description": "...", "objects": ["item1", "item2"]}}, "Library": {{"display_name": "Library", "size": "large", "description": "...", "objects": [...]}}, ...}}}}
