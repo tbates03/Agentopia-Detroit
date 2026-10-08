@@ -239,8 +239,15 @@ CHECKS = [
         "heartbeat_starts_before_world",
         "critical",
         "scripts/run_detroit_persistent.py",
-        "AGENTOPIA_ENGINE_HEARTBEAT_RC2_EARLY",
-        "Engine heartbeat starts before expensive World construction so reboot initialization never appears stale.",
+        "_agentopia_write_heartbeat(\"process_started\")",
+        "Engine heartbeat is written before growth, relevance, and World initialization so reboot startup never appears stale.",
+    ),
+    (
+        "heartbeat_verifier_waits_for_new_pid",
+        "critical",
+        "scripts/apply_rc2_post_reboot_hardening.py",
+        "fresh RC2 heartbeat did not appear for engine pid=",
+        "Live hardening waits for the newly started engine heartbeat instead of racing the process startup.",
     ),
     (
         "observer_disconnects_are_normal",
