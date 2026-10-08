@@ -621,7 +621,7 @@
 
 /* AGENTOPIA_CITY_PULSE_V1613_START */
 (() => {
-  const VERSION = '1.6.1.3';
+  const VERSION = '1.7.4.5.1-right-sizing';
   const API = 'http://127.0.0.1:8767/api/telemetry';
   const fmtAge = v => {
     if (v === null || v === undefined || Number.isNaN(Number(v))) return '—';
@@ -631,7 +631,10 @@
     if (m < 60) return `${m}m ${rs}s`;
     return `${Math.floor(m / 60)}h ${m % 60}m`;
   };
+  const fmtPct = v => (v === null || v === undefined || Number.isNaN(Number(v))) ? '—' : `${Number(v).toFixed(1)}%`;
+  const fmtMs = v => (v === null || v === undefined || Number.isNaN(Number(v))) ? '—' : (Number(v) >= 1000 ? `${(Number(v)/1000).toFixed(2)}s` : `${Math.round(Number(v))}ms`);
   const esc = s => String(s ?? '');
+  const tierOrder = ['350M','1.2B','2.6B','specialist','other'];
 
   function ensurePanel() {
     let panel = document.getElementById('agentopiaCityPulse');
@@ -641,16 +644,31 @@
     panel.className = 'agentopia-city-pulse';
     panel.innerHTML = `
       <div class="city-pulse-head">
-        <div><span class="city-pulse-kicker">CITY PULSE</span><strong>Agentopia is thinking</strong></div>
+        <div><span class="city-pulse-kicker">RIGHT-SIZING PERFORMANCE</span><strong>How much intelligence can we keep local?</strong></div>
         <span id="cityPulseVersion">v${VERSION}</span>
       </div>
+
+      <div class="rs-summary-grid">
+        <article><span>CPU</span><b id="rsCpu">—</b><small id="rsCpuMeta">host utilization</small></article>
+        <article><span>MEMORY</span><b id="rsMemory">—</b><small id="rsMemoryMeta">system / unified</small></article>
+        <article><span>CORE MODEL SLOTS</span><b id="rsSlots">—</b><small>350M + 1.2B + 2.6B</small></article>
+        <article><span>INFERENCE CALLS</span><b id="rsRequests">—</b><small id="rsSuccess">uncached local calls</small></article>
+        <article><span>AVG LATENCY</span><b id="rsLatency">—</b><small>observed end-to-end</small></article>
+      </div>
+
+      <div class="rs-architecture">
+        <div class="rs-arch-title"><span>LIVE ROUTING DISTRIBUTION</span><small id="rsWindowNote">waiting for requests</small></div>
+        <div id="rsDistribution" class="rs-distribution"></div>
+      </div>
+
       <div class="city-pulse-grid">
         <div class="city-pulse-card"><span>Engine</span><b id="cpEngine">Connecting…</b><small id="cpHeartbeat">heartbeat —</small></div>
         <div class="city-pulse-card"><span>Phase activity</span><b id="cpProgress">Collecting…</b><div class="cp-progress"><i id="cpProgressBar"></i></div></div>
         <div class="city-pulse-card"><span>World commit</span><b id="cpWorldWrite">—</b><small id="cpWorldSource">—</small></div>
       </div>
+
       <div class="city-pulse-body">
-        <div class="city-pulse-models-wrap"><div class="city-pulse-subhead">MODEL POOLS <span>live slot usage</span></div><div id="cpModels" class="city-pulse-models"></div></div>
+        <div class="city-pulse-models-wrap"><div class="city-pulse-subhead">MODEL POOLS <span>live slot usage + workload</span></div><div id="cpModels" class="city-pulse-models"></div></div>
         <div class="city-pulse-stream-wrap"><div class="city-pulse-subhead">CITY PULSE <span>latest simulation activity</span></div><div id="cpStream" class="city-pulse-stream"><div class="cp-empty">Waiting for engine activity…</div></div></div>
       </div>`;
     const anchor = document.getElementById('phaseTimingStrip') || document.querySelector('.hud-row') || document.querySelector('main') || document.body.firstElementChild;
@@ -664,12 +682,65 @@
     if (el) el.textContent = esc(value);
   }
 
+  function distMap(perf) {
+    const m = new Map();
+    for (const row of (perf.distribution || [])) m.set(String(row.tier || 'other'), row);
+    return m;
+  }
+
+  function renderDistribution(perf) {
+    const host = document.getElementById('rsDistribution');
+    if (!host) return;
+    host.replaceChildren();
+    const map = distMap(perf);
+    const labels = {'350M':'SOCIAL 350M','1.2B':'CITIZEN 1.2B','2.6B':'STRATEGY 2.6B','specialist':'SPECIALIST','other':'OTHER'};
+    for (const tier of tierOrder) {
+      const row = map.get(tier) || {requests:0,share_percent:0,avg_latency_ms:null,recent_60s:0};
+      if ((tier === 'specialist' || tier === 'other') && !row.requests) continue;
+      const wrap = document.createElement('div');
+      wrap.className = `rs-dist-row rs-tier-${tier.replace('.','-')}`;
+      const top = document.createElement('div');
+      top.className = 'rs-dist-top';
+      const name = document.createElement('strong');
+      name.textContent = labels[tier] || tier;
+      const meta = document.createElement('span');
+      meta.textContent = `${Number(row.requests||0).toLocaleString()} calls • ${fmtPct(row.share_percent)} • ${fmtMs(row.avg_latency_ms)} avg • ${Number(row.recent_60s||0)}/min`;
+      top.append(name, meta);
+      const track = document.createElement('div');
+      track.className = 'rs-dist-track';
+      const fill = document.createElement('i');
+      fill.style.width = `${Math.max(0, Math.min(100, Number(row.share_percent||0)))}%`;
+      track.appendChild(fill);
+      wrap.append(top, track);
+      host.appendChild(wrap);
+    }
+    if (!host.children.length) {
+      const empty = document.createElement('div');
+      empty.className = 'cp-empty';
+      empty.textContent = 'Waiting for the first local inference call…';
+      host.appendChild(empty);
+    }
+  }
+
   function render(data) {
     ensurePanel();
     const engine = data.engine || {};
     const phase = data.phase || {};
     const progress = data.progress || {};
     const write = data.world_write || {};
+    const perf = data.performance || {};
+
+    setText('rsCpu', fmtPct(perf.cpu_percent));
+    setText('rsCpuMeta', perf.cpu_count ? `${perf.cpu_count} logical CPUs` : 'host utilization');
+    setText('rsMemory', perf.memory_used_gb != null ? `${perf.memory_used_gb} / ${perf.memory_total_gb ?? '—'} GB` : '—');
+    setText('rsMemoryMeta', fmtPct(perf.memory_percent));
+    setText('rsSlots', perf.core_total_slots != null ? `${perf.core_busy_slots || 0} / ${perf.core_total_slots}` : '—');
+    setText('rsRequests', Number(perf.requests || 0).toLocaleString());
+    setText('rsSuccess', perf.success_percent == null ? 'uncached local calls' : `${fmtPct(perf.success_percent)} successful`);
+    setText('rsLatency', fmtMs(perf.avg_latency_ms));
+    setText('rsWindowNote', perf.window_note || 'waiting for requests');
+    renderDistribution(perf);
+
     const engineText = engine.alive ? ((engine.heartbeat_age ?? 999) < 20 ? 'ACTIVE' : 'ALIVE / WAITING') : 'OFFLINE';
     setText('cpEngine', engineText);
     setText('cpHeartbeat', `heartbeat ${fmtAge(engine.heartbeat_age)} • ${phase.name || 'UNKNOWN'} ${fmtAge(phase.elapsed_seconds)}`);
@@ -679,16 +750,25 @@
     setText('cpWorldWrite', write.age == null ? 'No commit detected' : `${fmtAge(write.age)} ago`);
     setText('cpWorldSource', write.source || '—');
 
+    const distribution = distMap(perf);
+    const modelTier = {social:'350M', citizen:'1.2B', strategy:'2.6B', cyber:'specialist'};
     const models = document.getElementById('cpModels');
     if (models) {
       models.replaceChildren();
       for (const m of (data.models || [])) {
         const row = document.createElement('div');
-        row.className = `cp-model ${m.healthy ? 'healthy' : 'down'}`;
+        const ratio = (m.busy != null && m.slots) ? Number(m.busy)/Number(m.slots) : 0;
+        row.className = `cp-model ${m.healthy ? 'healthy' : 'down'} ${ratio >= 1 ? 'cp-saturated' : ratio >= .75 ? 'cp-busy' : ''}`;
         const left = document.createElement('span');
         left.textContent = m.label || m.name || 'model';
-        const right = document.createElement('b');
-        right.textContent = (m.busy != null && m.slots != null) ? `${m.busy}/${m.slots} busy` : (m.healthy ? 'READY' : 'OFFLINE');
+        const right = document.createElement('div');
+        right.className = 'rs-model-right';
+        const busy = document.createElement('b');
+        busy.textContent = (m.busy != null && m.slots != null) ? `${m.busy}/${m.slots} busy` : (m.healthy ? 'READY' : 'OFFLINE');
+        const t = distribution.get(modelTier[m.name]);
+        const work = document.createElement('small');
+        work.textContent = t ? `${Number(t.requests||0).toLocaleString()} calls • ${fmtMs(t.avg_latency_ms)} avg` : 'no calls recorded';
+        right.append(busy, work);
         row.append(left, right);
         models.appendChild(row);
       }
@@ -724,13 +804,16 @@
     } catch (err) {
       setText('cpEngine', 'TELEMETRY OFFLINE');
       setText('cpHeartbeat', 'The simulation may still be running; telemetry service is reconnecting.');
+      setText('rsCpu', '—');
+      setText('rsMemory', '—');
+      setText('rsSlots', '—');
     }
   }
 
   ensurePanel();
   poll();
   window.setInterval(poll, 2000);
-  console.info(`[Agentopia] City Pulse v${VERSION} active`);
+  console.info(`[Agentopia] Right-Sizing Performance v${VERSION} active`);
 })();
 /* AGENTOPIA_CITY_PULSE_V1613_END */
 
