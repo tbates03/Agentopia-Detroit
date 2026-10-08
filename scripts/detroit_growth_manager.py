@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,10 @@ HUM = WORLD / "humanity"
 PERSONA = WORLD / "persona"
 STATE_PATH = HUM / "promotion_state.json"
 VERSION = "1.0.0"
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 TRAIT_KEYS = [
     "confidence", "control", "curiosity", "empathy", "judging",
@@ -284,7 +289,7 @@ def promote_background_people(year: int | None = None) -> list[str]:
         )
         person["agentopia_persona"] = True
         person["promoted_year"] = year
-        person["updated_at"] = profile["growth_source"]["promoted_year"]
+        person["updated_at"] = utc_now()
         promoted.append(name)
         already.append(pid)
 
