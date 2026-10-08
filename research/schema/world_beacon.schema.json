@@ -206,6 +206,42 @@
         }
       },
       "additionalProperties": false
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "season": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "climate_profile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "weather_condition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "calendar_packs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "synthetic_weather": {
+          "type": "boolean"
+        },
+        "culture_inference": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
