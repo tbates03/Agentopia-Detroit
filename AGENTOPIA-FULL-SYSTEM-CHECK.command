@@ -39,6 +39,18 @@ done
 if [ -f "$APP/runtime/engine_heartbeat.json" ]; then
  AGE=$(( $(date +%s) - $(stat -f %m "$APP/runtime/engine_heartbeat.json" 2>/dev/null || echo 0) ))
  [ "$AGE" -lt 20 ] && ok "Engine heartbeat age=${AGE}s" || bad "Engine heartbeat stale age=${AGE}s"
+ HB_INFO="$("$PY" - "$APP/runtime/engine_heartbeat.json" <<'PY'
+import json,sys
+try:
+    d=json.load(open(sys.argv[1],encoding='utf-8'))
+    print(f"{d.get('pid','')}|{d.get('version','')}|{d.get('phase','')}")
+except Exception:
+    print("||")
+PY
+)"
+ HB_PID="${HB_INFO%%|*}"; HB_REST="${HB_INFO#*|}"; HB_VER="${HB_REST%%|*}"; HB_PHASE="${HB_REST#*|}"
+ [ -n "$HB_PID" ] && kill -0 "$HB_PID" 2>/dev/null && ok "Heartbeat PID=$HB_PID is live phase=${HB_PHASE:-?}" || bad "Heartbeat PID stale/missing pid=${HB_PID:-?}"
+ [ "$HB_VER" = "$VER" ] && ok "Heartbeat version=$HB_VER" || bad "Heartbeat version mismatch heartbeat=${HB_VER:-?} release=$VER"
 else bad "Engine heartbeat missing"; fi
 [ -f "$APP/runtime/boot_state" ] && ok "Boot state: $(cat "$APP/runtime/boot_state")" || warn "Boot state missing"
 for S in "$APP/scripts/start_detroit_persistent_service.sh" "$APP/scripts/start_detroit_llama.sh" "$APP/scripts/start_detroit_cyber_async.sh" "$APP/scripts/agentopia_watchdog.sh"; do bash -n "$S" >/dev/null 2>&1 && ok "Syntax $(basename "$S")" || bad "Syntax $(basename "$S")"; done
@@ -47,9 +59,8 @@ echo "Recent engine activity:"
 tail -12 "$APP/logs/detroit-persistent-launchd-error.log" 2>/dev/null || true
 echo
 # AGENTOPIA_PLATFORM_VERSION_CHECK_V172_START
-EXPECTED_PLATFORM_VERSION="1.7.2"
 ACTUAL_PLATFORM_VERSION="$(cat "$APP/VERSION" 2>/dev/null || true)"
-[ "$ACTUAL_PLATFORM_VERSION" = "$EXPECTED_PLATFORM_VERSION" ] && ok "Platform release v$ACTUAL_PLATFORM_VERSION" || warn "Platform release mismatch expected=$EXPECTED_PLATFORM_VERSION actual=${ACTUAL_PLATFORM_VERSION:-missing}"
+[ "$ACTUAL_PLATFORM_VERSION" = "$VER" ] && ok "Platform release v$ACTUAL_PLATFORM_VERSION" || warn "Platform release mismatch status=$VER actual=${ACTUAL_PLATFORM_VERSION:-missing}"
 [ -f "$WORLD/education/summary.json" ] && ok "Education & Skills Economy state" || warn "Education & Skills Economy summary not detected"
 [ -f "$WORLD/healthcare/summary.json" ] && ok "Health & Healthcare Economy state" || warn "Health & Healthcare Economy summary not detected"
 [ -f "$WORLD/mobility/summary.json" ] && ok "Mobility & Time state" || warn "Mobility & Time summary not detected"
