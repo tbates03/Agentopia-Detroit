@@ -179,3 +179,16 @@ Today it may be Detroit and a handful of student forks.
 Later it could be dozens or hundreds of independent worlds with different languages, jobs, trades, cultures, business processes, and local realities.
 
 We should be able to watch that map of human-contributed work grow over time and see, transparently, which AI capability was actually required to perform it.
+
+
+## Weather, Seasons and Cultural Calendars
+
+The World League research surface also includes environmental and calendar context.
+
+Participating worlds may add weather and seasonality that match the simulated place rather than inheriting Detroit assumptions. Weather can affect transportation, agriculture, construction, utilities, healthcare, deliveries, tourism, schools, businesses and public events.
+
+For each represented culture or community, a world may support **up to 50 widely celebrated holidays, observances, festivals and culturally important dates** when those dates are contributed or validated by people or sources that know the context.
+
+This is not a universal "top 50" guessed by TAi. A country is not one culture, and communities within the same country may use different calendars.
+
+See [Weather, Seasons and Cultural Calendar Research Roadmap](WORLD_CONTEXT_ROADMAP.md).
