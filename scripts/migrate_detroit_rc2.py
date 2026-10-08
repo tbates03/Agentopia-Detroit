@@ -185,6 +185,53 @@ def _process_diagnostics(pids: list[int]) -> str:
     return (cp.stdout or "").strip()
 
 
+def _tail(path: Path, lines: int = 80) -> str:
+    if not path.exists():
+        return f"[missing] {path}"
+    try:
+        data = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception as exc:
+        return f"[unreadable] {path}: {exc}"
+    return "\n".join(data[-lines:])
+
+
+def startup_diagnostics(live: Path) -> str:
+    sections: list[str] = []
+    pids = _remaining_agentopia_pids()
+    sections.append("=== PROCESS SNAPSHOT ===")
+    sections.append(_process_diagnostics(pids) or "(no matched Agentopia processes)")
+
+    if shutil.which("launchctl"):
+        domain = f"gui/{os.getuid()}"
+        cp = subprocess.run(
+            ["launchctl", "print", f"{domain}/{LABEL}"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        sections.append("\n=== LAUNCHD SERVICE ===")
+        sections.append((cp.stdout or "").strip() or f"launchctl print exit={cp.returncode}")
+
+    for rel in (
+        "logs/live-world-persistent.log",
+        "logs/model-pool-bootstrap.log",
+        "logs/detroit-backend.log",
+        "logs/detroit-manual-start.log",
+        "logs/agentopia-city-pulse.log",
+        "logs/detroit-digital-twin.log",
+        "logs/detroit-cognition.log",
+        "logs/detroit-humanity.log",
+        "logs/detroit-world-context.log",
+        "logs/cyber-async-bootstrap.log",
+    ):
+        path = live / rel
+        sections.append(f"\n=== TAIL {rel} ===")
+        sections.append(_tail(path, 80))
+
+    return "\n".join(sections)
+
+
 def stop_live(live: Path, timeout_seconds: float = 20.0) -> None:
     print("\n=== PAUSING LIVE DETROIT ===")
     domain = f"gui/{os.getuid()}"
@@ -410,13 +457,30 @@ def restart_live(live: Path, py: Path) -> None:
     print("\n=== RESTARTING LIVE DETROIT ===")
     if shutil.which("launchctl") and PLIST.exists():
         domain = f"gui/{os.getuid()}"
-        subprocess.run(["launchctl", "bootstrap", domain, str(PLIST)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(
-            ["launchctl", "kickstart", f"{domain}/com.agentopia.detroit.persistent"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        boot = subprocess.run(
+            ["launchctl", "bootstrap", domain, str(PLIST)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
         )
-        return
+        # bootstrap returns nonzero when an already-loaded label exists; kickstart
+        # is authoritative for whether launchd can actually start the service.
+        kick = subprocess.run(
+            ["launchctl", "kickstart", f"{domain}/{LABEL}"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        if kick.returncode == 0:
+            print("launchd kickstart accepted.")
+            return
+        print("launchd kickstart failed; falling back to direct guarded service start.")
+        if boot.stdout:
+            print("bootstrap:", boot.stdout.strip())
+        if kick.stdout:
+            print("kickstart:", kick.stdout.strip())
 
     log = live / "logs" / "detroit-manual-start.log"
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -465,14 +529,17 @@ def verify_restart(live: Path, seconds: int) -> dict[str, Any]:
     }
     print(json.dumps(result, indent=2))
 
+    failures = []
     if not observer:
-        raise RuntimeError("observer health did not recover after restart")
+        failures.append("observer health did not recover")
     if not engine:
-        raise RuntimeError(
-            "Detroit engine process did not become active within the verification window; inspect logs before continuing"
-        )
+        failures.append("Detroit engine process is not active")
     if not active_view:
-        raise RuntimeError("RC2 active persona view was not rebuilt after restart")
+        failures.append("RC2 active persona view was not rebuilt")
+    if failures:
+        print("\n=== STARTUP FAILURE DIAGNOSTICS ===")
+        print(startup_diagnostics(live))
+        raise RuntimeError("; ".join(failures))
     return result
 
 
@@ -556,6 +623,13 @@ def main() -> int:
     except Exception as exc:
         print("\nMIGRATION FAILED:", exc, file=sys.stderr)
         if backup_root is not None:
+            # A restart failure may leave launchd children running. Stop them
+            # before replacing files underneath a live Python process.
+            try:
+                stop_live(live)
+            except Exception as stop_error:
+                print("WARNING: rollback pre-stop could not prove a clean stop:", stop_error, file=sys.stderr)
+                print(startup_diagnostics(live), file=sys.stderr)
             try:
                 rollback_code(live, backup_root)
                 print("Code rollback restored from:", backup_root / "code-before", file=sys.stderr)
@@ -565,11 +639,19 @@ def main() -> int:
                 "Persistent world backup is preserved at: " + str(backup_root / "detroit_persistent"),
                 file=sys.stderr,
             )
-        print(
-            "Migration did not proceed past its safety gate. If the failure occurred during "
-            "shutdown, use the survivor diagnostics above; no RC2 code/state migration was performed.",
-            file=sys.stderr,
-        )
+            db = live / "data" / "detroit_persistent" / "civilization.sqlite3"
+            if db.exists():
+                print(
+                    "NOTE: the additive RC2 civilization.sqlite3 index exists in the live world. "
+                    "It does not replace JSON/persona state and can be safely re-synchronized on the next attempt.",
+                    file=sys.stderr,
+                )
+        else:
+            print(
+                "Migration stopped before a backup/code/state migration was created.",
+                file=sys.stderr,
+            )
+        print("Detroit remains paused for inspection.", file=sys.stderr)
         return 1
 
 
