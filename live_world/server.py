@@ -1052,7 +1052,7 @@ class WorldReader:
 
 
 class AppHandler(BaseHTTPRequestHandler):
-    server_version = "AgentopiaDetroit/1.7.4.5.1-observability-stability"
+    server_version = "AgentopiaDetroit/1.8.0-RC2"
 
     @property
     def app(self) -> "AppServer":
@@ -1064,12 +1064,18 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def send_json(self, payload: Any, status: int = 200) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # Browser refreshes, polling timeouts and closed dashboard tabs can
+            # disconnect while a snapshot is still being serialized. This is a
+            # normal client-side disconnect, not a Live World server failure.
+            return
 
     def serve_file(self, path: Path) -> None:
         if not path.exists() or not path.is_file():
@@ -1077,12 +1083,15 @@ class AppHandler(BaseHTTPRequestHandler):
             return
         data = path.read_bytes()
         ctype, _ = mimetypes.guess_type(path.name)
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", ctype or "application/octet-stream")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", ctype or "application/octet-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            return
 
     def do_POST(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
