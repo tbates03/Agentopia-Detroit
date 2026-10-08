@@ -44,7 +44,35 @@ The objective is to show that many useful workloads may not require a frontier m
 
 **Core principle: use the smallest model that can reliably perform the task, then escalate only when necessary.**
 
+
 See [Right-Sized Local AI Architecture](docs/RIGHT_SIZING_ARCHITECTURE.md).
+
+### Agentopia World League + Kai — Transparent AI
+
+Agentopia Detroit now includes a public **World League** for community right-sizing research.
+
+**[View the World League Leaderboard](LEADERBOARD.md)**
+
+Fork the project, create your own world, keep it alive, and submit a privacy-safe World Beacon. The initial leaderboard ranks worlds by **committed simulation weeks completed**. As the community grows, the display expands from weeks to months, years, and eventually decades while preserving weeks as the canonical research unit.
+
+But persistence is only the game layer.
+
+The research layer asks contributors to add the jobs, trades, business processes, administrative work, public services, languages, and local workflows that exist in their communities so we can test what model size is actually required for those tasks.
+
+**Please contribute tasks in the language in which the work is really performed. Do not translate yourself into English for us.** English summaries are useful for maintainers, but the native-language task is the primary research artifact.
+
+This is also a transparent community-learning mechanism for **Kai — Transparent AI**. Kai should learn from people who know their language, profession, community, and workflow — not from us guessing at someone else's culture.
+
+> **We learn from people willing to teach us, not by guessing at them.**
+
+Research/evaluation consent and model-training consent are separate. A community contribution is not silently converted into model-training data.
+
+See:
+
+- [Agentopia World League](docs/WORLD_LEAGUE.md)
+- [Kai — Transparent AI Community Learning](docs/KAI_TRANSPARENT_AI.md)
+- [Community Research](research/README.md)
+
 
 ---
 
