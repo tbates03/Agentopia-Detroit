@@ -37,12 +37,30 @@
       <span class="pill">4 committed weeks</span><span class="pill">Month Builder</span>
     </article>
     <article class="card">
-      <div class="sub">Population snapshot</div><div class="kpi">202</div>
-      <p>Current Detroit research snapshot with 64 active citizens.</p>
+      <div class="sub">Population snapshot</div><div id="populationTotal" class="kpi">202</div>
+      <p>Current Detroit research snapshot with <strong id="populationActive">64</strong> active citizens.</p>
     </article>
     <article class="card">
       <div class="sub">Leaderboard scale</div><div class="kpi">Weeks</div>
       <p>As participation grows: weeks → months → years → decades.</p>
+    </article>
+
+    <article class="card">
+      <div class="sub">Simulation date</div><div id="worldDate" class="kpi">Loading…</div>
+      <p id="worldEngineTime">Waiting for World Context telemetry.</p>
+    </article>
+    <article class="card">
+      <div class="sub">Season</div><div id="worldSeason" class="kpi">—</div>
+      <p id="worldClimate">Synthetic, place-aware simulation climate.</p>
+    </article>
+    <article class="card">
+      <div class="sub">Weather</div><div id="worldWeather" class="kpi">—</div>
+      <p id="worldTemperature">Weather now affects mobility and citizen context.</p>
+    </article>
+    <article class="card full">
+      <div class="sub">Calendar context</div>
+      <h2 id="worldHoliday">No observance loaded for today</h2>
+      <p id="worldHolidayWeek">Validated public/community calendars appear here. TAi does not infer a citizen's culture or religion.</p>
     </article>
 
     <article class="card wide">
@@ -60,7 +78,7 @@
     </article>
 
     <article class="card full">
-      <h2>New World-Context Research Roadmap</h2>
+      <h2>Live World-Context Engine + Research Roadmap</h2>
       <div class="roadmap">
         <div><b>🌦 Weather</b><span>Rain, snow, heat, storms and other conditions become workload context affecting transportation, utilities, health, deliveries, construction and daily decisions.</span></div>
         <div><b>🍂 Seasons</b><span>Northern and Southern Hemisphere seasonality, agriculture, energy use, school cycles, tourism and seasonal business patterns should reflect the world being simulated.</span></div>
@@ -98,5 +116,51 @@
 
   <footer>Agentopia Detroit · Agentopia World League · TAi — Transparent AI · Experimental research roadmap</footer>
 </div>
+
+<script>
+(function(){
+  const byId = function(id){ return document.getElementById(id); };
+  const pretty = function(s){
+    return String(s || "—").replaceAll("_"," ").replace(/\b\w/g, function(m){ return m.toUpperCase(); });
+  };
+  async function refreshWorldContext(){
+    try{
+      const response = await fetch("/api/snapshot?run=detroit_persistent", {cache:"no-store"});
+      const d = await response.json();
+      if(!d || !d.ok) return;
+      if(byId("populationTotal")) byId("populationTotal").textContent = d.population_total ?? d.agent_count ?? "—";
+      if(byId("populationActive")) byId("populationActive").textContent = d.runtime_active_count ?? d.agent_count ?? "—";
+      const w = d.world_context || {};
+      const cal = w.calendar_week || {};
+      const season = w.season || {};
+      const weather = w.weather || {};
+      if(byId("worldDate")) byId("worldDate").textContent = cal.today || "—";
+      if(byId("worldEngineTime")) byId("worldEngineTime").textContent = (cal.today_label || "World Context active") + (w.engine_time ? " · " + w.engine_time : "");
+      if(byId("worldSeason")) byId("worldSeason").textContent = pretty(season.name);
+      if(byId("worldClimate")) byId("worldClimate").textContent = season.climate_label || "Synthetic, place-aware simulation climate.";
+      if(byId("worldWeather")) byId("worldWeather").textContent = pretty(weather.condition);
+      const tf = weather.temperature_f || {};
+      const precip = weather.precipitation_chance_pct;
+      if(byId("worldTemperature")){
+        let txt = (tf.low != null && tf.high != null) ? (tf.low + "–" + tf.high + " °F") : "Temperature unavailable";
+        if(precip != null) txt += " · " + precip + "% precipitation";
+        txt += " · synthetic simulation context, not a forecast";
+        byId("worldTemperature").textContent = txt;
+      }
+      const today = Array.isArray(w.holidays_today) ? w.holidays_today : [];
+      const week = Array.isArray(w.holidays_this_week) ? w.holidays_this_week : [];
+      if(byId("worldHoliday")) byId("worldHoliday").textContent = today.length
+        ? today.map(function(x){ return x.native_name || x.english_name; }).join(" · ")
+        : "No public/explicitly assigned observance today";
+      if(byId("worldHolidayWeek")) byId("worldHolidayWeek").textContent = week.length
+        ? "This week: " + week.map(function(x){ return (x.native_name || x.english_name) + " (" + x.date + ")"; }).join(" · ")
+        : "No enabled validated calendar observance falls in this simulation week.";
+    }catch(_e){}
+  }
+  refreshWorldContext();
+  setInterval(refreshWorldContext, 5000);
+})();
+</script>
+
 </body>
 </html>
