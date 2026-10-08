@@ -70,7 +70,7 @@ A machine translation may be included for convenience, but **machine translation
 
 ## Culture Comes From People, Not Guessing
 
-Agentopia Detroit and **Kai — Transparent AI** should not invent someone else's culture.
+Agentopia Detroit and **TAi — Transparent AI** should not invent someone else's culture.
 
 A culture-aware Research Pack should say where its context came from:
 
@@ -85,17 +85,17 @@ We do **not** infer a person's culture from nationality, language, name, race, r
 
 We do **not** treat a country as one culture.
 
-We do **not** ask Kai to manufacture stereotypes and call them local knowledge.
+We do **not** ask TAi to manufacture stereotypes and call them local knowledge.
 
 If a contributor does not know the context well enough to represent it, the correct action is to invite someone who does.
 
 > **We learn from people willing to teach us, not by guessing at them.**
 
-## Kai — Transparent AI
+## TAi — Transparent AI
 
-The World League is a public, inspectable community-learning layer for **Kai — Transparent AI**.
+The World League is a public, inspectable community-learning layer for **TAi — Transparent AI**.
 
-Community contributions can help Kai's right-sizing research evaluate:
+Community contributions can help TAi's right-sizing research evaluate:
 
 - which task classes small local models handle well
 - which languages change model performance
@@ -110,7 +110,7 @@ The important word is **transparent**: the source task, language, contributor pr
 
 At this stage, World League contributions are treated as **research and evaluation inputs**. They are not silently turned into model-training or fine-tuning data. Any future training use must preserve provenance, permissions, contributor intent, and explicit consent.
 
-The goal is for Kai to improve how it selects the right intelligence for the work **without pretending to know a culture it was never taught**.
+The goal is for TAi to improve how it selects the right intelligence for the work **without pretending to know a culture it was never taught**.
 
 ## World Beacon
 
