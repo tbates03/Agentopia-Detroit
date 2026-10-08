@@ -1,5 +1,52 @@
 # Agentopia Detroit Changelog
 
+## 1.8.0-RC1 - Growth Architecture Audit
+
+This release candidate audits the Detroit fork against the original Agentopia assumptions and removes current hard blockers to long-run civic growth.
+
+### Time and persistence
+
+- changed the Detroit persistent runtime from the inherited compressed 10-week year to 52 simulation weeks per year
+- retained five LLM-heavy activity days per week while World Context represents the seven-day calendar
+- changed reward compatibility to a 13-week period so the 52-week year passes core validation
+- expanded the practical simulation horizon to one million configured years
+- added safe year-boundary process recycling from the committed checkpoint so newly promoted citizens can enter future active cohorts
+
+### Population and lifecycle
+
+- added Detroit Growth Manager
+- added annual bounded migration in addition to births
+- preserved and propagated explicit founder lineage through recorded parent relationships
+- removed the first-100 truncation from lifecycle activation candidates
+- added background-to-persistent-persona promotion
+- added current-year profile carry-forward for inactive personas
+- separated civic population, persistent persona population and active AI population
+
+### Local compute and context scale
+
+- removed the 12-worker ceiling from all fast speed modes
+- added configurable adaptive world-task concurrency
+- fixed PublicActivity multi-slot semaphore deadlock
+- bounded and rotated global citizen summaries used by God-model prompts
+- bounded and rotated encounter-generation citizen context
+- moved rich weekly mobility generation to the active AI cohort
+
+### Economy and city capacity
+
+- scaled Career Economy vacancies with the active cohort
+- made Detroit Career/Business Economy authoritative over the inherited yearly position market after bootstrap
+- confirmed Human Economy housing stock already expands with household demand
+- added incremental public-map growth with duplicate-name avoidance
+
+### Validation
+
+- added `docs/DETROIT_GROWTH_AUDIT.md`
+- added `scripts/audit_detroit_growth.py --strict`
+- added GitHub Actions growth-audit validation
+
+This is an **RC** because the public architecture has been patched, but the private persistent Detroit world must be migrated and observed before this becomes the next stable Detroit runtime.
+
+
 ## 1.7.4.5.1 - Experimental Alpha
 
 Initial public Detroit fork preparation.
