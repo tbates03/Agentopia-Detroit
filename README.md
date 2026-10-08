@@ -77,13 +77,21 @@ See:
 
 #### World Context Research
 
-The community research roadmap now also includes **weather, seasons, and culturally grounded calendars**. Participating worlds can model local environmental conditions and contribute up to 50 widely celebrated holidays, observances, festivals and culturally important dates per represented community when those calendars are validated rather than guessed.
+The community research roadmap now includes an implemented **World Context Engine v1.0.0** for weather, seasons, and culturally grounded calendars. It generates deterministic synthetic daily weather, maps place-appropriate seasons, injects the context into citizen prompts, exposes it through Live World telemetry, and lets mobility consume the same weather truth. Participating worlds can contribute up to 50 widely celebrated holidays, observances, festivals and culturally important dates per represented community when those calendars are validated rather than guessed.
 
 A new local research page is available from the Live World server at:
 
     http://127.0.0.1:8766/world-league.html
 
 See [World Context Research Roadmap](docs/WORLD_CONTEXT_ROADMAP.md).
+
+World Context files:
+
+- `scripts/detroit_world_context.py` — simulation/context authority
+- `scripts/detroit_world_context_daemon.py` — live sidecar telemetry
+- `research/culture_calendars/` — provenance-backed calendar packs
+- `research/schema/culture_calendar.schema.json` — maximum 50 observances per community pack
+
 
 ---
 
@@ -169,6 +177,7 @@ Agentopia Detroit is not a chatbot demo. Citizens exist inside a persistent worl
 - Education and Skills
 - Health and Healthcare
 - Mobility and Time
+- Weather, Seasons & Cultural Calendars
 - Digital Twin Telemetry
 - Live World Observer
 - Right-Sized Local Model Pool
