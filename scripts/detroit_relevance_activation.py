@@ -80,10 +80,7 @@ def rank_personas(
     ranked: list[dict[str, Any]] = []
 
     for name in names:
-        row = conn.execute(
-            "SELECT citizen_id,alive,promoted_year FROM citizens WHERE name=? COLLATE NOCASE",
-            (name,),
-        ).fetchone()
+        row = store.resolve_persona_citizen(conn, name)
         cid = str(row["citizen_id"]) if row else "persona:" + hashlib.sha256(name.casefold().encode()).hexdigest()[:20]
         score = 25.0
         reasons = ["persistent_persona"]
