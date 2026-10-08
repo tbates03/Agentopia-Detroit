@@ -14,7 +14,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 WORLD = ROOT / "data" / "detroit_persistent"
 HUM = WORLD / "humanity"
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 
 # Pew global 2020 landscape, used only as a neutral fallback prior for fictional
 # citizens when family belief and origin-specific context are unavailable.
@@ -492,10 +492,68 @@ def update_radicalization(people: dict[str, Any], current_year: int) -> list[dic
     return interventions
 
 
+def _stable_singleton_household(person_id: str) -> str:
+    digest = hashlib.sha256(f"singleton-household|{person_id}".encode("utf-8")).hexdigest()[:10].upper()
+    return f"HH-P-{digest}"
+
+
+def reconcile_household_ids(people: dict[str, Any]) -> dict[str, int]:
+    """Make lifecycle household IDs persistent and compatible with Human Economy.
+
+    Explicit family household IDs always win. For older personas that entered
+    Agentopia before lifecycle households existed, preserve any existing Human
+    Economy household ID so housing/budget history is not discarded. Only
+    citizens with neither source receive a deterministic singleton household.
+    """
+    econ_doc = read_json(WORLD / "human_economy" / "households.json", {})
+    econ_households = econ_doc.get("households", {}) if isinstance(econ_doc, dict) else {}
+    econ_by_name: dict[str, str] = {}
+    if isinstance(econ_households, dict):
+        # Prefer households with budget history, then newest update, then ID.
+        ranked: list[tuple[int, str, str, str]] = []
+        for hid, rec in econ_households.items():
+            if not isinstance(rec, dict):
+                continue
+            rank = 1 if rec.get("last_budget") else 0
+            updated = str(rec.get("updated_at") or "")
+            for name in rec.get("members", []) or []:
+                if name:
+                    ranked.append((rank, updated, str(hid), str(name)))
+        ranked.sort(reverse=True)
+        for _, _, hid, name in ranked:
+            econ_by_name.setdefault(name, hid)
+
+    preserved = 0
+    inherited = 0
+    created = 0
+    for pid, person in people.items():
+        if not isinstance(person, dict) or not person.get("alive", True):
+            continue
+        current = str(person.get("household_id") or "").strip()
+        if current and current != "unassigned":
+            preserved += 1
+            continue
+        name = str(person.get("name") or "")
+        existing = econ_by_name.get(name)
+        if existing:
+            person["household_id"] = existing
+            person["household_source"] = "human_economy_existing"
+            inherited += 1
+        else:
+            person["household_id"] = _stable_singleton_household(str(pid))
+            person["household_source"] = "lifecycle_stable_singleton"
+            created += 1
+        person["updated_at"] = utc_now()
+    return {"preserved": preserved, "inherited_from_economy": inherited, "created_singletons": created}
+
+
 def build_households(people: dict[str, Any]) -> dict[str, Any]:
     hh=defaultdict(list)
     for pid,p in people.items():
-        if isinstance(p,dict) and p.get("alive",True): hh[str(p.get("household_id") or "unassigned")].append(pid)
+        if not isinstance(p,dict) or not p.get("alive",True):
+            continue
+        hid = str(p.get("household_id") or _stable_singleton_household(str(pid)))
+        hh[hid].append(pid)
     return {k:{"household_id":k,"members":sorted(v),"size":len(v)} for k,v in sorted(hh.items())}
 
 
@@ -527,7 +585,7 @@ def context_for(name: str) -> str:
     ])
 
 
-def write_summary(people: dict[str, Any], current_year: int, interventions: list[dict[str,Any]]) -> dict[str, Any]:
+def write_summary(people: dict[str, Any], current_year: int, interventions: list[dict[str,Any]], household_reconciliation: dict[str,int] | None = None) -> dict[str, Any]:
     kin=kinship(people); write_json(HUM/"kinship.json",kin)
     households=build_households(people); write_json(HUM/"households.json",households)
     counts=Counter()
@@ -550,6 +608,8 @@ def write_summary(people: dict[str, Any], current_year: int, interventions: list
         "version":VERSION,"updated_at":utc_now(),"world_year":current_year,
         "population":sum(counts.values()),"life_stages":dict(counts),"beliefs":dict(beliefs),
         "households":len(households),"kinship_presence":dict(relations),
+        "household_truth":"humanity.people.household_id",
+        "household_reconciliation":household_reconciliation or {},
         "interventions":len(interventions),"activation_candidates":len(activation),
         "principles":{
             "children_use_background_simulation":True,"religion_never_inferred_from_name_or_ethnicity":True,
@@ -571,8 +631,9 @@ def update() -> dict[str, Any]:
     process_year_transition(people,year)
     update_ages(people,year)
     interventions=update_radicalization(people,year)
+    household_reconciliation=reconcile_household_ids(people)
     save_state(people)
-    return write_summary(people,year,interventions)
+    return write_summary(people,year,interventions,household_reconciliation)
 
 
 def apply_runtime_patch() -> None:
