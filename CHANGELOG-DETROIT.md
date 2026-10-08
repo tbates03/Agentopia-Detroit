@@ -90,3 +90,18 @@ The telemetry record intentionally excludes prompts, responses, credentials and 
 - added support direction for up to 50 widely celebrated holidays, observances, festivals and culturally important dates per represented community
 - required contributor/community/source validation instead of TAi guessing cultural calendars
 - documented that culture/language groups are never ranked against one another; task/model behavior is the research target
+
+
+### World Context Engine v1.0.0
+
+- implemented deterministic synthetic daily weather for each simulation week
+- implemented season mapping by configured hemisphere/climate profile
+- added shared environmental impacts for transportation, outdoor work, energy demand and health stress
+- injected current world context into citizen prompts without inferring protected/cultural identity
+- added live World Context sidecar and heartbeat
+- exposed world-context telemetry in the Live World snapshot and World League webpage
+- made Mobility & Time consume World Context weather as the environmental authority when available
+- added provenance-backed culture/community calendar packs with a hard maximum of 50 observances per pack
+- added U.S. public/federal civic baseline as a public calendar, explicitly not as a complete U.S. cultural definition
+- added native-language calendar fields and explicit community membership support
+- added weather/season/calendar metadata to privacy-safe World Beacons
