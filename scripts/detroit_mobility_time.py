@@ -357,6 +357,19 @@ def build_summary(state:dict[str,Any]|None=None)->dict[str,Any]:
     }
     write_json(SUMMARY_PATH,out);return out
 
+def active_persona_names()->list[str]:
+    """Return the bounded runtime cohort, not every persistent persona."""
+    view=WORLD/'.active_persona_view'
+    if view.exists():
+        return sorted({p.name for p in view.iterdir() if p.is_dir() or p.is_symlink()})
+    root=WORLD/'persona'
+    if not root.exists(): return []
+    return sorted({
+        p.name for p in root.iterdir()
+        if p.is_dir() and not (p/'_background.json').exists()
+    })
+
+
 def initialize()->dict[str,Any]:
     MOB.mkdir(parents=True,exist_ok=True);write_json(POLICY_PATH,POLICY)
     y,w,phase,slot,raw=checkpoint_time();key=week_key(y,w)
@@ -368,11 +381,15 @@ def initialize()->dict[str,Any]:
     if state.get('last_processed_week')!=key:generate_week(state,y,w,hh,housing,byname,veh,protect_current=True)
     state['last_processed_week']=key;state['updated_at']=utc_now();write_json(STATE_PATH,state);return build_summary(state)
 
-def generate_week(state:dict[str,Any],year:int,week:int,hh:dict[str,Any],housing:dict[str,Any],byname:dict[str,str],veh:dict[str,list[dict[str,Any]]],protect_current:bool=False)->None:
+def generate_week(state:dict[str,Any],year:int,week:int,hh:dict[str,Any],housing:dict[str,Any],byname:dict[str,str],veh:dict[str,list[dict[str,Any]]],protect_current:bool=False,names:list[str]|None=None)->None:
     key=week_key(year,week);career=read_json(CAREER/'state.json',{'citizens':{}}).get('citizens',{});edu=read_json(EDU/'state.json',{'citizens':{}}).get('citizens',{});health=read_json(HEALTH/'state.json',{'citizens':{}}).get('citizens',{})
     paid=transport_paid_for_week(key);weather=weather_for(year,week);base_rng=stable_rng('congestion',year,week);congestion=round(base_rng.uniform(1.05,1.28)*(float(weather['travel_time_factor'])**0.35),3)
     incident_count=0;delay_total=0;corridor_load=Counter()
-    names=sorted({p.name for p in (WORLD/'persona').iterdir() if p.is_dir()}) if (WORLD/'persona').exists() else []
+    # AGENTOPIA_MOBILITY_ACTIVE_COHORT_V180
+    # Rich trip generation is foreground work. Background citizens remain in
+    # persistent lifecycle/economy aggregates and can receive full mobility when
+    # promoted into the bounded active AI cohort.
+    names=sorted(set(names if names is not None else active_persona_names()))
     for name in names:
         cr=career.get(name,{}) if isinstance(career,dict) else {};er=edu.get(name,{}) if isinstance(edu,dict) else {};hr=health.get(name,{}) if isinstance(health,dict) else {};hid=byname.get(name,'')
         home=home_zone(name,hh,housing,byname);dest=work_zone(name,career);school=school_zone(er);age=age_for(name,health,year);hrec=hh.get(hid,{}) if hid else {};eclass=str(hrec.get('economic_class') or 'middle');cars=veh.get(hid,[]) if hid else []
@@ -394,7 +411,9 @@ def week_start(world:Any)->None:
     t=world.clock.get_time();year=int(getattr(t,'year',2045));week=int(getattr(t,'week',1));key=week_key(year,week)
     state=read_json(STATE_PATH,{'version':VERSION,'last_processed_week':None,'citizens':{}})
     if state.get('last_processed_week')==key:build_summary(state);return
-    hh,housing,byname=household_maps();veh=vehicles_for_households(hh,housing,year,week);generate_week(state,year,week,hh,housing,byname,veh,protect_current=False)
+    hh,housing,byname=household_maps();veh=vehicles_for_households(hh,housing,year,week)
+    active_names=sorted({str(getattr(a,'name','')) for a in getattr(world,'agents',[]) if getattr(a,'name',None)})
+    generate_week(state,year,week,hh,housing,byname,veh,protect_current=False,names=active_names)
     state['version']=VERSION;state['last_processed_week']=key;state['updated_at']=utc_now();write_json(STATE_PATH,state);build_summary(state)
     try:world.logger.info('[MOB174] Mobility & Time generated %s: citizens=%d trips=%d',key,len(state.get('citizens',{})),sum(len(r.get('trips',[])) for r in state.get('citizens',{}).values()))
     except Exception:pass
