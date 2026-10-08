@@ -163,6 +163,19 @@ def observed_clock() -> dict[str, Any]:
     return {"raw": f"Y{y}-W{w:02d}-begin", "year": y, "week": w, "stage": "begin", "day": None}
 
 
+def world_time_config() -> dict[str, int]:
+    cfg = read_json(WORLD / "config.json", {})
+    try:
+        t = cfg["world"]["time"]
+        return {
+            "weeks_per_year": int(t.get("n_week", 52)),
+            "activity_days_per_week": int(t.get("n_day", 5)),
+            "calendar_days_per_week": 7,
+        }
+    except Exception:
+        return {"weeks_per_year": 52, "activity_days_per_week": 5, "calendar_days_per_week": 7}
+
+
 def load_profile() -> dict[str, Any]:
     p = read_json(PROFILE_LOCAL, None)
     if not isinstance(p, dict):
@@ -346,6 +359,7 @@ def membership_for(name: str) -> set[str]:
 def build_context(clock: dict[str, Any] | None = None) -> dict[str, Any]:
     clock = clock or observed_clock()
     profile = load_profile()
+    time_model = world_time_config()
     year, week = int(clock["year"]), int(clock["week"])
     dates = week_dates(year, week)
     day_num = int(clock.get("day") or 1)
@@ -372,6 +386,9 @@ def build_context(clock: dict[str, Any] | None = None) -> dict[str, Any]:
             "end": dates[-1].isoformat(),
             "today": today.isoformat(),
             "today_label": today.strftime("%A, %B %d, %Y"),
+            "weeks_per_year": time_model["weeks_per_year"],
+            "calendar_days_per_week": time_model["calendar_days_per_week"],
+            "activity_days_per_week": time_model["activity_days_per_week"],
         },
         "season": {
             "name": current_weather["season"],
@@ -452,6 +469,7 @@ def world_context_text(name: str = "") -> str:
     lines = [
         f"## Agentopia World Context v{VERSION}",
         f"- Simulation date: {cal.get('today_label', 'unknown')} ({summary.get('engine_time', '')}).",
+        f"- Time model: {cal.get('weeks_per_year', 52)} calendar weeks/year; {cal.get('calendar_days_per_week', 7)} calendar days/week with {cal.get('activity_days_per_week', 5)} LLM-heavy activity days.",
         f"- Season: {season.get('name', 'unknown')} ({season.get('hemisphere', 'unknown')} hemisphere; synthetic climate profile: {season.get('climate_label', 'unknown')}).",
         f"- Weather today: {str(weather.get('condition', 'unknown')).replace('_', ' ')}; low {weather.get('temperature_f', {}).get('low', '?')}F / high {weather.get('temperature_f', {}).get('high', '?')}F; precipitation chance {weather.get('precipitation_chance_pct', '?')}%. This is simulated context, not a real forecast.",
         f"- Weather impacts: transport x{weather.get('impacts', {}).get('transport_factor', 1.0)}, outdoor-work x{weather.get('impacts', {}).get('outdoor_work_factor', 1.0)}, energy-demand x{weather.get('impacts', {}).get('energy_demand_factor', 1.0)}.",
