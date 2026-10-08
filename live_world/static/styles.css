@@ -255,3 +255,31 @@ button,select{font:inherit}.topbar{position:sticky;top:0;z-index:50;display:flex
 .cp-model.cp-saturated{border-color:rgba(255,92,92,.72)!important;background:rgba(255,65,65,.10)!important;box-shadow:inset 3px 0 0 rgba(255,92,92,.8)}
 .cp-pulse-fallback time{color:#f0b85b!important}
 
+
+
+/* AGENTOPIA_RIGHT_SIZING_PERFORMANCE_CSS_START */
+.rs-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 10px}
+.rs-summary-grid article{min-width:0;padding:10px;border:1px solid rgba(127,155,176,.18);border-radius:9px;background:rgba(255,255,255,.025)}
+.rs-summary-grid span{display:block;color:#7890a3;font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+.rs-summary-grid b{display:block;margin-top:4px;color:#e1edf5;font:700 14px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-summary-grid small{display:block;margin-top:4px;color:#7e94a5;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs-architecture{margin-bottom:10px;padding:10px;border:1px solid rgba(101,150,187,.22);border-radius:10px;background:rgba(8,22,34,.55)}
+.rs-arch-title{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+.rs-arch-title span{font:700 9px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;color:#8bbde1}
+.rs-arch-title small{font-size:8px;color:#72899a}
+.rs-distribution{display:grid;gap:7px}
+.rs-dist-row{min-width:0}
+.rs-dist-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:4px}
+.rs-dist-top strong{font-size:9px;color:#d9e9f5}
+.rs-dist-top span{font:500 8px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;color:#7f98aa;text-align:right}
+.rs-dist-track{height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
+.rs-dist-track i{display:block;height:100%;min-width:2px;border-radius:999px;background:linear-gradient(90deg,#4f86b0,#62baa9);transition:width .45s ease}
+.rs-tier-350M .rs-dist-track i{background:linear-gradient(90deg,#487da5,#5aa6c4)}
+.rs-tier-1-2B .rs-dist-track i{background:linear-gradient(90deg,#4b8b82,#62b39d)}
+.rs-tier-2-6B .rs-dist-track i{background:linear-gradient(90deg,#8c7f51,#c0a863)}
+.rs-tier-specialist .rs-dist-track i{background:linear-gradient(90deg,#865c83,#b17da9)}
+.rs-model-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
+.rs-model-right small{font:500 7px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:#6f8799}
+@media(max-width:1100px){.rs-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.rs-summary-grid{grid-template-columns:1fr 1fr}.rs-dist-top{align-items:flex-start;flex-direction:column;gap:2px}.rs-dist-top span{text-align:left}.rs-arch-title{align-items:flex-start;flex-direction:column}}
+/* AGENTOPIA_RIGHT_SIZING_PERFORMANCE_CSS_END */
