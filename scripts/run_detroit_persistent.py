@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORLD = ROOT / "data" / "detroit_persistent"
 VIEW = WORLD / ".active_persona_view"
 META = WORLD / "persistent_world.json"
-VERSION = "1.7.4.5.1"
+VERSION = "1.8.0-RC1"
 
 
 def now(): return datetime.now(timezone.utc).isoformat()
