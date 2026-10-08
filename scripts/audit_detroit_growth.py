@@ -179,6 +179,41 @@ CHECKS = [
         "avoid_names",
         "Incremental map generation is told not to reuse existing public locations.",
     ),
+    (
+        "indexed_civilization_store",
+        "critical",
+        "scripts/detroit_state_store.py",
+        "CREATE TABLE IF NOT EXISTS citizens",
+        "Large civic populations have an indexed SQLite state plane instead of requiring repeated directory scans.",
+    ),
+    (
+        "append_only_event_ledger",
+        "critical",
+        "scripts/detroit_state_store.py",
+        "CREATE TABLE IF NOT EXISTS events",
+        "Civilization history is recorded as immutable events with dedupe keys.",
+    ),
+    (
+        "relevance_activation",
+        "critical",
+        "scripts/detroit_relevance_activation.py",
+        "def rank_personas",
+        "The active AI cohort is chosen by relevance rather than only static foreground ordering.",
+    ),
+    (
+        "civilization_invariants",
+        "critical",
+        "scripts/detroit_civilization_invariants.py",
+        "def audit",
+        "State corruption is checked with explicit civilization invariants.",
+    ),
+    (
+        "hundred_k_stress_harness",
+        "high",
+        "scripts/stress_detroit_civilization.py",
+        "100_000",
+        "RC2 ships a headless 100K-citizen scale regression harness.",
+    ),
 ]
 
 
