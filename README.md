@@ -47,7 +47,7 @@ The objective is to show that many useful workloads may not require a frontier m
 
 See [Right-Sized Local AI Architecture](docs/RIGHT_SIZING_ARCHITECTURE.md).
 
-### Agentopia World League + Kai — Transparent AI
+### Agentopia World League + TAi — Transparent AI
 
 Agentopia Detroit now includes a public **World League** for community right-sizing research.
 
@@ -61,7 +61,7 @@ The research layer asks contributors to add the jobs, trades, business processes
 
 **Please contribute tasks in the language in which the work is really performed. Do not translate yourself into English for us.** English summaries are useful for maintainers, but the native-language task is the primary research artifact.
 
-This is also a transparent community-learning mechanism for **Kai — Transparent AI**. Kai should learn from people who know their language, profession, community, and workflow — not from us guessing at someone else's culture.
+This is also a transparent community-learning mechanism for **TAi — Transparent AI**. TAi should learn from people who know their language, profession, community, and workflow — not from us guessing at someone else's culture.
 
 > **We learn from people willing to teach us, not by guessing at them.**
 
@@ -70,7 +70,7 @@ Research/evaluation consent and model-training consent are separate. A community
 See:
 
 - [Agentopia World League](docs/WORLD_LEAGUE.md)
-- [Kai — Transparent AI Community Learning](docs/KAI_TRANSPARENT_AI.md)
+- [TAi — Transparent AI Community Learning](docs/TAI_TRANSPARENT_AI.md)
 - [Community Research](research/README.md)
 
 
