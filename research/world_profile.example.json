@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "world_id": "my-city",
+  "world_name": "My City",
+  "maintainer": {
+    "github": "your-github-name"
+  },
+  "repository": "https://github.com/your-github-name/Agentopia-Detroit",
+  "simulation_start_year": 2045,
+  "weeks_per_year": 52,
+  "simulated_context": {
+    "regions": [
+      "Your region or community"
+    ],
+    "languages": [
+      {
+        "bcp47": "en-US",
+        "name": "English (United States)"
+      }
+    ]
+  },
+  "hardware_profile": "auto",
+  "model_training_finetuning": false,
+  "notes": "Optional public notes about your world. Do not include private or personal data."
+}
