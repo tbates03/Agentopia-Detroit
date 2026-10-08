@@ -98,3 +98,43 @@ A successful migration writes:
 
 The marker contains the backup path, pre-migration snapshot, indexed-store
 validation results, restart verification and final migration status.
+
+
+## First successful live migration
+
+The first successful guarded live migration completed on October 8, 2026 against
+the persistent Detroit world.
+
+Observed live-world preflight and restart results:
+
+- checkpoint preserved at **2045 / Week 4**
+- civic people records: **216**
+- persistent persona directories: **202**
+- indexed SQLite citizens: **216**
+- indexed SQLite personas: **202**
+- civilization invariants: **9 passed / 0 failed**
+- growth architecture audit: **28 passed / 0 failed**
+- local 100K-citizen / 1K-persona / 10K-event stress run: **0.337 seconds**
+- relevance stress selection: **128 active**
+- observer health after restart: **READY**
+- City Pulse health after restart: **READY**
+- Detroit engine process after restart: **RUNNING**
+- active persona view after restart: **READY**
+
+The live backup for that migration was created under:
+
+`backups/rc2-migration/20261008-041224`
+
+### Launchd fallback observed
+
+On the successful migration, macOS returned:
+
+- `Bootstrap failed: 5: Input/output error`
+- `Could not find service "com.agentopia.detroit.persistent" in domain for user gui:501`
+
+The guarded migration then used its direct-service fallback. That fallback
+successfully started the observer, City Pulse, Detroit engine and active persona
+view, so the migration was accepted as successful.
+
+This launchd condition is therefore an **operational follow-up**, not an RC2
+civilization-state failure.
