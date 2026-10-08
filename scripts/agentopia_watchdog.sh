@@ -41,4 +41,8 @@ if ! pulse_health; then
   PY="$APP/.venv/bin/python"; [ -x "$PY" ] || PY="$(command -v python3 2>/dev/null || true)"
   [ -z "$PY" ] || nohup "$PY" "$APP/scripts/agentopia_city_pulse.py" >> "$APP/logs/agentopia-city-pulse.log" 2>&1 &
 fi
+if ! pgrep -f '[d]etroit_world_context_daemon.py' >/dev/null 2>&1; then
+  PY="$APP/.venv/bin/python"; [ -x "$PY" ] || PY="$(command -v python3 2>/dev/null || true)"
+  [ -z "$PY" ] || nohup "$PY" "$APP/scripts/detroit_world_context_daemon.py" >> "$APP/logs/detroit-world-context.log" 2>&1 &
+fi
 if model_health 8083; then touch "$APP/runtime/llama/cyber_available"; else rm -f "$APP/runtime/llama/cyber_available"; fi
