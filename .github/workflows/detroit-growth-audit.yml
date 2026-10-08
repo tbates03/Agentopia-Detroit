@@ -1,0 +1,61 @@
+name: Detroit Growth Audit
+
+on:
+  pull_request:
+    paths:
+      - "src/world/world.py"
+      - "src/world/god.py"
+      - "src/world/simulation_speed.py"
+      - "src/world/locations.py"
+      - "src/world/mapgen.py"
+      - "scripts/run_detroit_persistent.py"
+      - "scripts/start_detroit_persistent_service.sh"
+      - "scripts/detroit_growth_manager.py"
+      - "scripts/detroit_human_lifecycle.py"
+      - "scripts/detroit_career_economy.py"
+      - "scripts/detroit_mobility_time.py"
+      - "scripts/detroit_world_context.py"
+      - "scripts/audit_detroit_growth.py"
+      - "docs/DETROIT_GROWTH_AUDIT.md"
+      - ".github/workflows/detroit-growth-audit.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/world/world.py"
+      - "src/world/god.py"
+      - "src/world/simulation_speed.py"
+      - "src/world/locations.py"
+      - "src/world/mapgen.py"
+      - "scripts/run_detroit_persistent.py"
+      - "scripts/start_detroit_persistent_service.sh"
+      - "scripts/detroit_growth_manager.py"
+      - "scripts/detroit_human_lifecycle.py"
+      - "scripts/detroit_career_economy.py"
+      - "scripts/detroit_mobility_time.py"
+      - "scripts/detroit_world_context.py"
+      - "scripts/audit_detroit_growth.py"
+      - "docs/DETROIT_GROWTH_AUDIT.md"
+      - ".github/workflows/detroit-growth-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile growth-critical Python
+        run: |
+          python -m py_compile             src/world/world.py             src/world/god.py             src/world/simulation_speed.py             src/world/locations.py             src/world/mapgen.py             scripts/run_detroit_persistent.py             scripts/detroit_growth_manager.py             scripts/detroit_human_lifecycle.py             scripts/detroit_career_economy.py             scripts/detroit_mobility_time.py             scripts/detroit_world_context.py             scripts/audit_detroit_growth.py
+
+      - name: Shell syntax
+        run: bash -n scripts/start_detroit_persistent_service.sh
+
+      - name: Growth architecture regression audit
+        run: python scripts/audit_detroit_growth.py --strict
