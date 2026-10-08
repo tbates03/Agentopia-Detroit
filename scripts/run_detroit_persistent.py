@@ -207,6 +207,30 @@ class PersistentDetroitWorld(World):
             "[DETROIT_GROWTH] legacy annual position application skipped; Career Economy is authoritative"
         )
 
+    # AGENTOPIA_YEARLY_COHORT_RECYCLE_V180
+    def run(self):
+        """Run exactly one simulation year, then recycle the process safely.
+
+        A yearly process boundary lets the growth manager promote background
+        residents, refresh the bounded active cohort, carry forward inactive
+        profiles, and clear long-lived model/cache fragmentation without ever
+        editing the checkpoint by hand.
+        """
+        start_year = int(self.config["time"]["start_year"])
+        original_n_year = int(self.config["time"]["n_year"])
+        one_year_span = max(1, int(self._resume_year) - start_year + 1)
+        self.config["time"]["n_year"] = min(original_n_year, one_year_span)
+        self.logger.info(
+            "[DETROIT_GROWTH] yearly cohort cycle: resume_year=%d active=%d",
+            int(self._resume_year),
+            len(self.agents),
+        )
+        try:
+            super().run()
+        finally:
+            self.config["time"]["n_year"] = original_n_year
+        return "year_complete"
+
 # AGENTOPIA_COGNITIVE_RUNTIME_V130
 try:
     scripts_dir = ROOT / "scripts"
@@ -228,7 +252,7 @@ try:
     import detroit_human_lifecycle as _agentopia_humanity
     _agentopia_humanity.update()
     _agentopia_humanity.apply_runtime_patch()
-    print("[humanity] Human Lifecycle & Belief Engine v1.4.0 active")
+    print(f"[humanity] Human Lifecycle & Belief Engine v{_agentopia_humanity.VERSION} active")
 except Exception as _humanity_error:
     print(f"[humanity] WARNING: sidecar initialization failed: {_humanity_error}")
 
@@ -403,6 +427,11 @@ def _agentopia_engine_heartbeat():
 _agentopia_hb_threading.Thread(target=_agentopia_engine_heartbeat, name='agentopia-engine-heartbeat', daemon=True).start()
 # AGENTOPIA_ENGINE_HEARTBEAT_V1612_END
 
-w.run()
+_cycle_result = w.run()
 try: merge_run_cache("detroit_persistent")
 except Exception: pass
+
+# Exit code 75 is an intentional year-boundary recycle request. The persistent
+# service wrapper immediately starts the next year from the committed checkpoint.
+if _cycle_result == "year_complete":
+    raise SystemExit(75)
