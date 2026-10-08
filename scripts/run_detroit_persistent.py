@@ -42,21 +42,89 @@ time_cfg = world.setdefault("time", {})
 start = int(time_cfg.get("start_year", 2045))
 cp = read(WORLD / "checkpoint.json", {})
 year = int(cp.get("year", start)) if isinstance(cp, dict) else start
-time_cfg["n_year"] = max(int(time_cfg.get("n_year", 10)), year - start + 1000, 5000)
+
+# AGENTOPIA_DETROIT_GROWTH_CALENDAR_V180
+# Original Agentopia models a compressed 10-week year. Detroit's lifecycle,
+# careers, education, weather, seasons and research timeline are year-based, so
+# the persistent city uses a real 52-week simulation year while retaining five
+# LLM-heavy activity days per week.
+time_cfg["n_week"] = 52
+time_cfg["n_day"] = 5
+time_cfg["n_year"] = max(int(time_cfg.get("n_year", 10)), year - start + 1000, 1_000_000)
+
+# Reward history must divide the 52-week Detroit year cleanly.
+reward_cfg = world.setdefault("reward", {})
+reward_cfg["period_weeks"] = 13
+
+growth_cfg = world.setdefault("growth", {})
+growth_cfg.setdefault("annual_migration_rate", 0.02)
+growth_cfg.setdefault("annual_migration_min", 2)
+growth_cfg.setdefault("annual_migration_max", 8)
+growth_cfg.setdefault("promotions_per_year", 4)
+growth_cfg.setdefault("active_ai_min", 64)
+growth_cfg.setdefault("active_ai_max", 128)
+growth_cfg.setdefault("global_prompt_agent_limit", 48)
+growth_cfg.setdefault("encounter_prompt_agents_per_day", 48)
 write(cfg_path, cfg)
 
-# Build a non-destructive active-persona view. Agentopia core remains untouched.
+# Refresh persistent background society and promote a bounded number of adults
+# into durable persona directories before the active AI cohort is selected.
+_growth_preflight = {}
+try:
+    import detroit_growth_manager as _agentopia_growth
+    _growth_preflight = _agentopia_growth.prepare_for_boot()
+except Exception as _growth_error:
+    print(f"[growth] WARNING: preflight failed: {_growth_error}")
+    _agentopia_growth = None
+
+# Build a bounded, non-destructive active-persona view. Population may grow far
+# beyond the LLM-active cohort; persistent personas retain their state while
+# local compute controls how many think in the foreground on this boot.
 persona_root = WORLD / "persona"
-# AGENTOPIA_ULTRAPLUS_ACTIVE48_V142
 all_personas = [p for p in persona_root.iterdir() if p.is_dir()]
-foreground = [p for p in all_personas if not (p / "_background.json").exists()]
-background = [p for p in all_personas if (p / "_background.json").exists()]
-foreground.sort(key=lambda p: p.name.casefold())
-background.sort(key=lambda p: p.name.casefold())
-active_target = int(os.environ.get("AGENTOPIA_ACTIVE_CITIZENS", "64"))
-# Never deactivate an already-active citizen. Borrow enough background founders
-# into the runtime VIEW to reach the performance target. Canonical markers stay intact.
-active = foreground + background[:max(0, active_target - len(foreground))]
+foreground = sorted(
+    [p for p in all_personas if not (p / "_background.json").exists()],
+    key=lambda p: p.name.casefold(),
+)
+background = sorted(
+    [p for p in all_personas if (p / "_background.json").exists()],
+    key=lambda p: p.name.casefold(),
+)
+
+factions = read(WORLD / "factions.json", {})
+faction_names = set()
+if isinstance(factions, dict):
+    for f in (factions.get("factions") or {}).values():
+        if isinstance(f, dict):
+            faction_names.update(str(x) for x in (f.get("members") or []))
+
+if _agentopia_growth is not None:
+    active_target = _agentopia_growth.recommend_active_target(len(all_personas))
+else:
+    active_target = min(
+        len(all_personas),
+        int(os.environ.get("AGENTOPIA_ACTIVE_CITIZENS", growth_cfg.get("active_ai_min", 64))),
+    )
+
+# Mission/faction leaders are pinned, then existing foreground citizens are
+# preferred, then growth-pool/background citizens fill new capacity.
+by_name = {p.name: p for p in all_personas}
+pinned_names = {"TGOT", "Morbeious"} | faction_names
+active = []
+seen = set()
+
+def _add_persona(path):
+    if path is None or path.name in seen or len(active) >= active_target:
+        return
+    active.append(path)
+    seen.add(path.name)
+
+for name in sorted(pinned_names, key=lambda x: (0 if x in {"TGOT", "Morbeious"} else 1, x.casefold())):
+    _add_persona(by_name.get(name))
+for p in foreground:
+    _add_persona(p)
+for p in background:
+    _add_persona(p)
 
 leader_order = {"TGOT": 0, "Morbeious": 1}
 active.sort(key=lambda p: (leader_order.get(p.name, 10), p.name.casefold()))
@@ -70,11 +138,6 @@ for p in active:
 
 # Faction membership drives cyber-specialist routing when the optional cyber
 # server is available. Otherwise those citizens use the 2.6B strategy pool.
-factions = read(WORLD / "factions.json", {})
-faction_names = set()
-if isinstance(factions, dict):
-    for f in (factions.get("factions") or {}).values():
-        if isinstance(f, dict): faction_names.update(str(x) for x in (f.get("members") or []))
 cyber_ready = health(8083)
 assign_path = WORLD / "model_assignment.json"
 assignment = read(assign_path, {})
@@ -122,8 +185,27 @@ set_run_cache_dir("detroit_persistent")
 from src.world.world import World
 
 class PersistentDetroitWorld(World):
+    # The runtime view is already the explicit active cohort. Background markers
+    # describe canonical storage status and must not filter citizens out again.
+    _include_background_personas = True
+
     def _persona_root(self) -> Path:
         return VIEW
+
+    def _grow_positions(self, current_year: int, is_first_year: bool) -> None:
+        # Detroit Career + Business Economy are authoritative after bootstrap.
+        # Keep the original first-year merge for compatibility, but do not let
+        # legacy Agentopia invent a second job market every subsequent year.
+        if is_first_year:
+            return super()._grow_positions(current_year, is_first_year)
+        self.logger.info(
+            "[DETROIT_GROWTH] legacy position growth skipped; Career Economy is authoritative"
+        )
+
+    def _run_position_application_season(self) -> None:
+        self.logger.info(
+            "[DETROIT_GROWTH] legacy annual position application skipped; Career Economy is authoritative"
+        )
 
 # AGENTOPIA_COGNITIVE_RUNTIME_V130
 try:
@@ -296,7 +378,8 @@ signal.signal(signal.SIGINT, stop)
 signal.signal(signal.SIGTERM, stop)
 print(f"[persistent] Agentopia Detroit v{VERSION}")
 print("[persistent] world=data/detroit_persistent")
-print(f"[persistent] active_ai={len(active)} cyber_model={cyber_ready}")
+print(f"[persistent] active_ai={len(active)}/{len(all_personas)} target={active_target} cyber_model={cyber_ready}")
+print(f"[persistent] calendar=52weeks x 5 activity-days growth={_growth_preflight or 'preflight-unavailable'}")
 print("[persistent] resume=checkpoint")
 # AGENTOPIA_ENGINE_HEARTBEAT_V1612_START
 import threading as _agentopia_hb_threading
