@@ -64,6 +64,9 @@ if [ "$BACKEND" = llama ] && ! pgrep -f '[s]tart_detroit_cyber_async.sh' >/dev/n
   nohup "$APP/scripts/start_detroit_cyber_async.sh" >> "$APP/logs/cyber-async-bootstrap.log" 2>&1 &
 fi
 
+# Never carry a prior engine heartbeat across a supervised restart.
+# The RC2 runner writes a fresh heartbeat immediately when it launches.
+rm -f "$APP/runtime/engine_heartbeat.json" "$APP/runtime/engine_heartbeat.error.log" 2>/dev/null || true
 state "ENGINE_STARTING_$BACKEND"
 cd "$APP" || exit 34
 

@@ -247,6 +247,51 @@ class PersistentDetroitWorld(World):
             self.config["time"]["n_year"] = original_n_year
         return "year_complete"
 
+# AGENTOPIA_ENGINE_HEARTBEAT_RC2_EARLY
+# Start liveness reporting before expensive World/agent construction. A reboot
+# can spend minutes rebuilding model/persona state; the heartbeat must describe
+# that initializing RC2 process rather than leave an old process heartbeat in
+# place until World(...) returns.
+import threading as _agentopia_hb_threading
+import time as _agentopia_hb_time
+_ENGINE_HEARTBEAT = ROOT / "runtime" / "engine_heartbeat.json"
+_ENGINE_HEARTBEAT_ERROR = ROOT / "runtime" / "engine_heartbeat.error.log"
+
+def _agentopia_write_heartbeat(phase: str = "initializing") -> None:
+    try:
+        _ENGINE_HEARTBEAT.parent.mkdir(parents=True, exist_ok=True)
+        _tmp = _ENGINE_HEARTBEAT.with_name(
+            f"{_ENGINE_HEARTBEAT.name}.{os.getpid()}.tmp"
+        )
+        _tmp.write_text(json.dumps({
+            "pid": os.getpid(),
+            "unix": _agentopia_hb_time.time(),
+            "version": VERSION,
+            "world": "detroit_persistent",
+            "phase": phase,
+        }, indent=2), encoding="utf-8")
+        _tmp.replace(_ENGINE_HEARTBEAT)
+    except Exception as exc:
+        try:
+            _ENGINE_HEARTBEAT_ERROR.write_text(
+                f"{now()} pid={os.getpid()} {type(exc).__name__}: {exc}\n",
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+
+def _agentopia_engine_heartbeat() -> None:
+    while True:
+        _agentopia_write_heartbeat("running_or_initializing")
+        _agentopia_hb_time.sleep(5)
+
+_agentopia_write_heartbeat("boot_pre_world")
+_agentopia_hb_threading.Thread(
+    target=_agentopia_engine_heartbeat,
+    name="agentopia-engine-heartbeat",
+    daemon=True,
+).start()
+
 # AGENTOPIA_COGNITIVE_RUNTIME_V130
 try:
     scripts_dir = ROOT / "scripts"
@@ -421,27 +466,6 @@ print("[persistent] world=data/detroit_persistent")
 print(f"[persistent] active_ai={len(active)}/{len(all_personas)} target={active_target} cyber_model={cyber_ready}")
 print(f"[persistent] calendar=52weeks x 5 activity-days growth={_growth_preflight or 'preflight-unavailable'}")
 print("[persistent] resume=checkpoint")
-# AGENTOPIA_ENGINE_HEARTBEAT_V1612_START
-import threading as _agentopia_hb_threading
-import time as _agentopia_hb_time
-_ENGINE_HEARTBEAT = ROOT / "runtime" / "engine_heartbeat.json"
-def _agentopia_engine_heartbeat():
-    while True:
-        try:
-            _ENGINE_HEARTBEAT.parent.mkdir(parents=True, exist_ok=True)
-            _tmp = _ENGINE_HEARTBEAT.with_suffix('.tmp')
-            _tmp.write_text(json.dumps({
-                "pid": os.getpid(),
-                "unix": _agentopia_hb_time.time(),
-                "version": VERSION,
-                "world": "detroit_persistent",
-            }, indent=2), encoding='utf-8')
-            _tmp.replace(_ENGINE_HEARTBEAT)
-        except Exception:
-            pass
-        _agentopia_hb_time.sleep(5)
-_agentopia_hb_threading.Thread(target=_agentopia_engine_heartbeat, name='agentopia-engine-heartbeat', daemon=True).start()
-# AGENTOPIA_ENGINE_HEARTBEAT_V1612_END
 
 _cycle_result = w.run()
 try: merge_run_cache("detroit_persistent")

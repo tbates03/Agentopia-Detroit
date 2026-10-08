@@ -94,7 +94,15 @@ import sys
 raise SystemExit(0 if float(sys.argv[1]) <= 30 else 1)
 PY
     fi
-    status_line "HEARTBEAT" "$HB_COLOR" "${AGE}s old | pid=$HPID | version=$HVER"
+    if [ -n "$EPID" ] && [ "$HPID" != "$EPID" ]; then
+      HB_COLOR="$RED"
+      status_line "HEARTBEAT" "$HB_COLOR" "${AGE}s old | pid=$HPID != engine=$EPID | version=$HVER"
+    elif [ "$HVER" != "$VER" ]; then
+      HB_COLOR="$RED"
+      status_line "HEARTBEAT" "$HB_COLOR" "${AGE}s old | pid=$HPID | version=$HVER != release=$VER"
+    else
+      status_line "HEARTBEAT" "$HB_COLOR" "${AGE}s old | pid=$HPID | version=$HVER"
+    fi
   else
     status_line "HEARTBEAT" "$RED" "MISSING"
   fi

@@ -28,6 +28,15 @@ try:
         k=sig()
         if k!=last:
             subprocess.run([sys.executable,str(SCRIPT),"update"],cwd=str(ROOT),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            # Keep the RC2 civilization index synchronized with births, migration,
+            # household reconciliation and lifecycle population changes.
+            try:
+                subprocess.run(
+                    [sys.executable,str(ROOT/"scripts"/"detroit_state_store.py"),"sync"],
+                    cwd=str(ROOT),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=False,
+                )
+            except Exception:
+                pass
             last=k
         time.sleep(10)
 finally:
