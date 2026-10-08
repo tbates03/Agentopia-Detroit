@@ -72,4 +72,4 @@ Research Packs explicitly separate:
 
 Training consent is optional. Submitting a benchmark does not silently grant training permission.
 
-See docs/WORLD_LEAGUE.md and docs/KAI_TRANSPARENT_AI.md.
+See docs/WORLD_LEAGUE.md and docs/TAI_TRANSPARENT_AI.md.
