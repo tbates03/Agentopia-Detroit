@@ -59,6 +59,7 @@
         <button class="tab" data-view="education" role="tab">Education & Skills</button>
         <button class="tab" data-view="healthcare" role="tab">Health & Healthcare</button>
         <button class="tab" data-view="mobility" role="tab">Mobility & Time</button>
+        <button class="tab" data-view="worldcontext" role="tab">World Context</button>
       </div>
 
       <section id="mapView" class="view-panel active">
@@ -116,6 +117,27 @@
           <div class="mobility-policy"><strong>Mobility accounting rule:</strong> Human Economy remains the authority for citizen transportation debits. v1.7.4 turns that already-paid budget into persistent trips, modes, vehicles, commute time and mobility pressure without charging citizens twice. Zone coordinates are simulation abstractions, not real navigation data.</div>
         </div>
       </section>
+      <section id="worldcontextView" class="view-panel">
+        <div class="worldcontext-shell">
+          <div class="worldcontext-head">
+            <div><strong>Agentopia World Context</strong><span>simulation date · season · synthetic weather · culturally grounded calendars</span></div>
+            <span id="worldcontextUpdated" class="muted">Waiting...</span>
+          </div>
+          <div class="worldcontext-clock">
+            <div><span>SIMULATION DATE</span><strong id="worldcontextDate">--</strong></div>
+            <small id="worldcontextEngineTime">Waiting for world-context telemetry</small>
+          </div>
+          <div id="worldcontextStats" class="worldcontext-stats"></div>
+          <div class="worldcontext-grid">
+            <section><h3>7-day synthetic weather</h3><div id="worldcontextWeather"></div></section>
+            <section><h3>Calendar context</h3><div id="worldcontextHolidays"></div></section>
+            <section><h3>Environmental effects</h3><div id="worldcontextImpacts"></div></section>
+            <section><h3>Enabled calendar packs</h3><div id="worldcontextCalendars"></div></section>
+          </div>
+          <div class="worldcontext-policy"><strong>World Context rule:</strong> weather is synthetic simulation context, not a real forecast. TAi never infers culture, religion, language, or holiday observance from a citizen's name, race, nationality, location, or other identity proxy. Community calendars are explicit and provenance-backed.</div>
+        </div>
+      </section>
+
       <section class="timeline-strip">
         <div class="section-title"><span>Detroit Continuum</span><span class="muted">Real history → fictional Agentopia future</span></div>
         <div id="detroitTimeline" class="detroit-timeline"></div>
