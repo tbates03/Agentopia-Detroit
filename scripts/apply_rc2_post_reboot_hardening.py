@@ -151,20 +151,36 @@ def main() -> int:
 
         print("\n=== HEARTBEAT VERIFY ===")
         hb_path = live / "runtime" / "engine_heartbeat.json"
+        hb_error = live / "runtime" / "engine_heartbeat.error.log"
+        engine_pids = guard.pids_for("scripts/run_detroit_persistent.py")
+        expected_pid = engine_pids[0] if engine_pids else None
         hb = {}
-        try:
-            hb = json.loads(hb_path.read_text(encoding="utf-8"))
-        except Exception as exc:
-            raise RuntimeError(f"heartbeat unreadable after restart: {exc}")
-        if hb.get("version") != "1.8.0-RC2":
-            raise RuntimeError(f"heartbeat version mismatch: {hb}")
-        pid = int(hb.get("pid") or 0)
-        if pid <= 0:
-            raise RuntimeError(f"heartbeat PID missing: {hb}")
-        try:
-            os.kill(pid, 0)
-        except OSError:
-            raise RuntimeError(f"heartbeat PID is not alive: {hb}")
+        deadline = __import__("time").monotonic() + 90
+        last_error = None
+        while __import__("time").monotonic() < deadline:
+            try:
+                if hb_path.exists():
+                    hb = json.loads(hb_path.read_text(encoding="utf-8"))
+                    pid = int(hb.get("pid") or 0)
+                    if (
+                        hb.get("version") == "1.8.0-RC2"
+                        and pid > 0
+                        and (expected_pid is None or pid == expected_pid)
+                    ):
+                        try:
+                            os.kill(pid, 0)
+                            break
+                        except OSError:
+                            pass
+            except Exception as exc:
+                last_error = exc
+            __import__("time").sleep(1)
+        else:
+            err_text = hb_error.read_text(encoding="utf-8", errors="replace") if hb_error.exists() else ""
+            raise RuntimeError(
+                f"fresh RC2 heartbeat did not appear for engine pid={expected_pid}; "
+                f"last={hb!r}; read_error={last_error}; writer_error={err_text.strip() or 'none'}"
+            )
         print(json.dumps(hb, indent=2))
 
         print("\n=== RC2 STORE ===")
