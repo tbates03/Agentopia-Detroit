@@ -1,6 +1,6 @@
 # Agentopia Community Research
 
-This directory contains the public, opt-in research layer for the **Agentopia World League** and **Kai — Transparent AI** right-sizing research.
+This directory contains the public, opt-in research layer for the **Agentopia World League** and **TAi — Transparent AI** right-sizing research.
 
 Structure:
 
