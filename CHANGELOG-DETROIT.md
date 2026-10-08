@@ -12,7 +12,7 @@
 - Added 100K-citizen / 1K-persona / 10K-event headless stress harness.
 - Expanded the growth regression audit from 23 to 28 checks.
 - GitHub Actions validation: 28/28 checks passed; 100K stress completed in 0.842s.
-- Private live Detroit remains unmigrated pending deliberate RC2 promotion.
+- Live persistent Detroit migrated successfully to RC2 on October 8, 2026: 216 civic citizens, 202 persistent personas, 9/9 civilization invariants, 28/28 growth checks, 100K stress in 0.337s, and observer/City Pulse/engine/active-view verified after restart.
 
 
 
