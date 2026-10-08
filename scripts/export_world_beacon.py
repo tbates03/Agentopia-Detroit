@@ -112,6 +112,22 @@ def main() -> int:
         if isinstance(row, dict) and row.get("pack_id"):
             pack_ids.append(str(row["pack_id"]))
 
+    world_context = load_json(world_dir / "world_context" / "summary.json", {})
+    environment = {}
+    if isinstance(world_context, dict) and world_context:
+        environment = {
+            "season": (world_context.get("season") or {}).get("name"),
+            "climate_profile": (world_context.get("season") or {}).get("climate_profile"),
+            "weather_condition": (world_context.get("weather") or {}).get("condition"),
+            "calendar_packs": [
+                str(x.get("calendar_id"))
+                for x in (world_context.get("calendar_packs") or [])
+                if isinstance(x, dict) and x.get("calendar_id")
+            ],
+            "synthetic_weather": bool((world_context.get("research") or {}).get("synthetic_weather", True)),
+            "culture_inference": bool((world_context.get("research") or {}).get("culture_inference", False)),
+        }
+
     beacon = {
         "schema_version": "1.0",
         "world_id": profile["world_id"],
@@ -129,6 +145,7 @@ def main() -> int:
             "memory_gb": memory_gb(),
         },
         "right_sizing": aggregate_right_sizing(ROOT / "runtime" / "right_sizing_requests.jsonl"),
+        "environment": environment,
         "research_packs": pack_ids,
         "consent": {
             "public_research_evaluation": True,
