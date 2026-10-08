@@ -67,7 +67,7 @@ Current alpha limitations include:
 The telemetry record intentionally excludes prompts, responses, credentials and citizen conversation content.
 
 
-### Agentopia World League / Kai Transparent AI community research
+### Agentopia World League / TAi Transparent AI community research
 
 - launched LEADERBOARD.md for participating persistent worlds
 - leaderboard progress is based on committed simulation weeks
@@ -79,4 +79,4 @@ The telemetry record intentionally excludes prompts, responses, credentials and 
 - made native-language task text the primary research artifact; English summaries are optional
 - added contributor provenance requirements for cultural/regional context
 - separated public research/evaluation consent from model training/fine-tuning consent
-- documented Agentopia World League as a transparent community-learning layer for Kai — Transparent AI
+- documented Agentopia World League as a transparent community-learning layer for TAi — Transparent AI
