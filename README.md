@@ -2,7 +2,7 @@
 
 ## A Persistent AI Society Built on Agentopia
 
-**Experimental Alpha - v1.7.4.5.1**
+**Experimental Alpha - v1.8.0-RC1**
 
 Agentopia Detroit is a persistent multi-agent simulation built as a fork of the original Agentopia project:
 
@@ -160,6 +160,30 @@ Agentopia Detroit is not a chatbot demo. Citizens exist inside a persistent worl
 - participate in missions
 - experience investigations and consequences
 - resume across simulation checkpoints
+
+## Growth Architecture
+
+v1.8.0-RC1 adds a growth architecture audit and removes inherited assumptions that could turn the original Agentopia design into hard ceilings for a persistent city.
+
+Detroit now separates:
+
+1. **Civic population** — lightweight persistent lifecycle population, including families, descendants and migration.
+2. **Persistent persona population** — citizens promoted into durable Agentopia persona/state storage.
+3. **Active AI cohort** — the bounded local-model foreground that performs expensive weekly reasoning.
+
+This lets Detroit grow without pretending one local computer should run every resident as a full LLM agent every week.
+
+Major RC1 changes include a 52-week simulation year, annual migration, background-to-persona promotion, inactive profile carry-forward, year-boundary cohort refresh, adaptive concurrency, bounded rotating global prompts, scalable vacancies, active-cohort mobility, growing public-space capacity, and the PublicActivity semaphore deadlock correction.
+
+Run the architecture regression audit with:
+
+```bash
+python scripts/audit_detroit_growth.py --strict
+```
+
+See **[Detroit Growth Architecture Audit](docs/DETROIT_GROWTH_AUDIT.md)**.
+
+---
 
 ## Major Systems
 
@@ -411,6 +435,9 @@ This is experimental alpha software.
 
 Current development areas include:
 
+- v1.8.0-RC1 live migration/validation
+- large-population storage/indexing
+- dynamic active-cohort relevance scheduling
 - household truth unification
 - simulation performance
 - context budgeting
