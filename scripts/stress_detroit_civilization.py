@@ -18,9 +18,11 @@ def run(citizens: int, personas: int, events: int, max_seconds: float) -> dict:
         conn = store.connect(db)
         now = store.utc_now()
         rows = []
+        duplicate_name = "Alex Johnson"
         for i in range(citizens):
+            display_name = duplicate_name if i in (citizens - 2, citizens - 1) else f"Citizen {i:09d}"
             rows.append((
-                f"CIV-{i:09d}", f"Citizen {i:09d}", 1, 1980 + (i % 60),
+                f"CIV-{i:09d}", display_name, 1, 1980 + (i % 60),
                 "adult", "synthetic_stress", "", "[]", int(i < personas),
                 2045 if i < personas else None, "stress_harness", now,
             ))
@@ -54,6 +56,7 @@ def run(citizens: int, personas: int, events: int, max_seconds: float) -> dict:
             "elapsed_seconds": round(elapsed, 3),
             "max_seconds": max_seconds,
             "within_budget": elapsed <= max_seconds,
+            "duplicate_name_rows": 2,
             "stats": stats,
         }
 
@@ -61,6 +64,14 @@ def run(citizens: int, personas: int, events: int, max_seconds: float) -> dict:
             raise RuntimeError(f"citizen count mismatch: {stats['citizens']} != {citizens}")
         if stats["events"] != events:
             raise RuntimeError(f"event count mismatch: {stats['events']} != {events}")
+        dup_conn = store.connect(db)
+        duplicate_rows = dup_conn.execute(
+            "SELECT COUNT(*) FROM citizens WHERE name=? COLLATE NOCASE",
+            (duplicate_name,),
+        ).fetchone()[0]
+        dup_conn.close()
+        if duplicate_rows != 2:
+            raise RuntimeError(f"duplicate-name identity regression: expected 2 rows, found {duplicate_rows}")
         if len(selected) != min(128, personas):
             raise RuntimeError("active-cohort selection mismatch")
         return result

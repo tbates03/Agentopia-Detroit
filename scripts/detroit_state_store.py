@@ -13,7 +13,7 @@ from typing import Any, Iterable, Iterator
 ROOT = Path(__file__).resolve().parents[1]
 WORLD = ROOT / "data" / "detroit_persistent"
 DEFAULT_DB = WORLD / "civilization.sqlite3"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def utc_now() -> str:
@@ -67,7 +67,8 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             source TEXT NOT NULL DEFAULT 'legacy_json',
             updated_at TEXT NOT NULL
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_citizens_name ON citizens(name COLLATE NOCASE);
+        DROP INDEX IF EXISTS idx_citizens_name;
+        CREATE INDEX IF NOT EXISTS idx_citizens_name ON citizens(name COLLATE NOCASE);
         CREATE INDEX IF NOT EXISTS idx_citizens_persona_alive ON citizens(is_persona, alive);
         CREATE INDEX IF NOT EXISTS idx_citizens_life_stage ON citizens(life_stage);
 
@@ -136,6 +137,45 @@ def _founder_ids(person: dict[str, Any]) -> list[str]:
     if isinstance(lineage, dict):
         out.extend(str(x) for x in lineage.get("founder_ids", []) if x)
     return sorted(set(out))
+
+
+def lifecycle_person_id_for_name(name: str) -> str:
+    """Return the canonical lifecycle ID used for existing persona names."""
+    return "P-" + hashlib.sha256(str(name).encode("utf-8")).hexdigest()[:12].upper()
+
+
+def resolve_persona_citizen(conn: sqlite3.Connection, name: str) -> sqlite3.Row | None:
+    """Resolve a persona name without treating display names as civic identities.
+
+    Existing lifecycle-seeded personas use a deterministic ID derived from the
+    persona directory name. If that row is unavailable, prefer a row already
+    marked as a persona, then a persona/profile source, then a living citizen,
+    with citizen_id as the stable deterministic tie-breaker.
+    """
+    canonical = lifecycle_person_id_for_name(name)
+    row = conn.execute(
+        """
+        SELECT citizen_id,name,alive,is_persona,promoted_year,source
+        FROM citizens
+        WHERE citizen_id=? AND name=? COLLATE NOCASE
+        """,
+        (canonical, name),
+    ).fetchone()
+    if row:
+        return row
+    return conn.execute(
+        """
+        SELECT citizen_id,name,alive,is_persona,promoted_year,source
+        FROM citizens
+        WHERE name=? COLLATE NOCASE
+        ORDER BY is_persona DESC,
+                 CASE WHEN source='persona/profile' THEN 0 ELSE 1 END,
+                 alive DESC,
+                 citizen_id ASC
+        LIMIT 1
+        """,
+        (name,),
+    ).fetchone()
 
 
 def upsert_citizen(conn: sqlite3.Connection, citizen_id: str, person: dict[str, Any], *, source: str) -> None:
@@ -294,7 +334,7 @@ def sync_legacy_state(world: Path | None = None, db_path: Path | str | None = No
         if persona_root.exists():
             for pdir in sorted((p for p in persona_root.iterdir() if p.is_dir()), key=lambda p: p.name.casefold()):
                 profile = _persona_profile(pdir)
-                row = conn.execute("SELECT citizen_id FROM citizens WHERE name=? COLLATE NOCASE", (pdir.name,)).fetchone()
+                row = resolve_persona_citizen(conn, pdir.name)
                 cid = str(row["citizen_id"]) if row else "persona:" + hashlib.sha256(pdir.name.casefold().encode()).hexdigest()[:20]
                 profile["agentopia_persona"] = True
                 upsert_citizen(conn, cid, profile, source="persona/profile")

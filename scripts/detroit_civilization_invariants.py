@@ -30,6 +30,12 @@ def audit(db_path: Path | str | None = None, world: Path | None = None) -> dict[
 
     check("citizen_ids_unique", "SELECT citizen_id FROM citizens GROUP BY citizen_id HAVING COUNT(*)>1", "Citizen IDs are immutable identities.")
     check("citizen_names_nonempty", "SELECT citizen_id FROM citizens WHERE TRIM(name)=''", "Every indexed citizen needs a display identity.")
+    checks.append({
+        "check": "duplicate_names_allowed",
+        "pass": True,
+        "violations": 0,
+        "why": "Display names are not civic identity keys; citizen_id is authoritative.",
+    })
     check("birth_year_plausible", "SELECT citizen_id FROM citizens WHERE birth_year IS NOT NULL AND (birth_year<1800 OR birth_year>1000000)", "Birth years must remain inside the simulation horizon.")
     check("event_importance_nonnegative", "SELECT event_id FROM events WHERE importance<0", "Event importance cannot invert relevance scoring.")
     check("persona_is_living", "SELECT citizen_id FROM citizens WHERE is_persona=1 AND alive=0", "Dead citizens must not remain eligible for active cognition.")

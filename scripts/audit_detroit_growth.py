@@ -249,6 +249,20 @@ CHECKS = [
         "ConnectionResetError, ConnectionAbortedError",
         "Normal dashboard/client disconnects do not generate BrokenPipe failure traces.",
     ),
+    (
+        "citizen_identity_schema_v2",
+        "critical",
+        "scripts/detroit_state_store.py",
+        "SCHEMA_VERSION = 2",
+        "Citizen identity is keyed by citizen_id and duplicate human display names are allowed.",
+    ),
+    (
+        "citizen_name_index_nonunique",
+        "critical",
+        "scripts/detroit_state_store.py",
+        "CREATE INDEX IF NOT EXISTS idx_citizens_name",
+        "Name remains searchable without being treated as a unique civic identity.",
+    ),
 ]
 
 
