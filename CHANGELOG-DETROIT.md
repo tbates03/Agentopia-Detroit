@@ -24,6 +24,23 @@ Major development areas include:
 - Live World observer
 - local model pool tooling
 - watchdog and operational tooling
+- right-sized local AI research architecture
+
+### Right-Sizing documentation / launcher update
+
+The public alpha now documents the central research purpose of Agentopia Detroit:
+
+**Use the smallest model that can reliably perform the task, then escalate only when necessary.**
+
+The core local launcher now supports automatic `light`, `balanced`, and `performance` profiles and exposes concurrency/context overrides through environment variables.
+
+The current three-model Liquid AI pool remains:
+
+- LFM2.5 350M for lightweight social work
+- LFM2.5 1.2B Instruct for routine citizen reasoning
+- LFM2.5 2.6B for strategy and higher-complexity work
+
+Model weights remain external to this repository.
 
 Current alpha limitations include:
 
@@ -33,3 +50,4 @@ Current alpha limitations include:
 - some operational helpers currently assume macOS
 - model weights are not distributed
 - private persistent world state is not distributed
+- sanitized starter world is not yet included
