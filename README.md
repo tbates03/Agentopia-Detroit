@@ -74,6 +74,17 @@ See:
 - [Community Research](research/README.md)
 
 
+
+#### World Context Research
+
+The community research roadmap now also includes **weather, seasons, and culturally grounded calendars**. Participating worlds can model local environmental conditions and contribute up to 50 widely celebrated holidays, observances, festivals and culturally important dates per represented community when those calendars are validated rather than guessed.
+
+A new local research page is available from the Live World server at:
+
+    http://127.0.0.1:8766/world-league.html
+
+See [World Context Research Roadmap](docs/WORLD_CONTEXT_ROADMAP.md).
+
 ---
 
 ## Michigan AI Symposium Demonstration
