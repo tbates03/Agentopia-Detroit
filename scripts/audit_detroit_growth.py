@@ -214,6 +214,41 @@ CHECKS = [
         "100_000",
         "RC2 ships a headless 100K-citizen scale regression harness.",
     ),
+    (
+        "household_identity_reconciled",
+        "critical",
+        "scripts/detroit_human_lifecycle.py",
+        "def reconcile_household_ids",
+        "Lifecycle no longer collapses unrelated unassigned citizens into one household.",
+    ),
+    (
+        "economy_uses_lifecycle_households",
+        "critical",
+        "scripts/detroit_human_economy.py",
+        "household_truth':'humanity.people.household_id",
+        "Human Economy uses lifecycle household identity as its canonical household graph.",
+    ),
+    (
+        "lifecycle_syncs_civilization_store",
+        "critical",
+        "scripts/detroit_humanity_daemon.py",
+        "detroit_state_store.py",
+        "Births, migration and lifecycle changes are synchronized into the RC2 indexed civilization store.",
+    ),
+    (
+        "heartbeat_starts_before_world",
+        "critical",
+        "scripts/run_detroit_persistent.py",
+        "AGENTOPIA_ENGINE_HEARTBEAT_RC2_EARLY",
+        "Engine heartbeat starts before expensive World construction so reboot initialization never appears stale.",
+    ),
+    (
+        "observer_disconnects_are_normal",
+        "high",
+        "live_world/server.py",
+        "ConnectionResetError, ConnectionAbortedError",
+        "Normal dashboard/client disconnects do not generate BrokenPipe failure traces.",
+    ),
 ]
 
 
