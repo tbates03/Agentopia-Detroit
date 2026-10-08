@@ -327,7 +327,7 @@
     }catch(err){connection.textContent=`Speed change failed • ${err.message}`;connection.className='status-dot error';}
   }
 
-  function renderAll(){renderHeader();renderRuns();renderMap();renderBuildings();renderNetwork();renderCognition();renderHumanity();renderInspector();renderConversations();renderEvents();renderDetroitTimeline();renderSpeed();renderInterior();if(window.AgentopiaV161Finance)window.AgentopiaV161Finance(state.snapshot);if(window.AgentopiaV1614Career)window.AgentopiaV1614Career(state.snapshot);if(window.AgentopiaV170Economy)window.AgentopiaV170Economy(state.snapshot);if(window.AgentopiaV171Business)window.AgentopiaV171Business(state.snapshot);if(window.AgentopiaV172Education)window.AgentopiaV172Education(state.snapshot);if(window.AgentopiaV173Health)window.AgentopiaV173Health(state.snapshot);if(window.AgentopiaV174Mobility)window.AgentopiaV174Mobility(state.snapshot);}
+  function renderAll(){renderHeader();renderRuns();renderMap();renderBuildings();renderNetwork();renderCognition();renderHumanity();renderInspector();renderConversations();renderEvents();renderDetroitTimeline();renderSpeed();renderInterior();if(window.AgentopiaV161Finance)window.AgentopiaV161Finance(state.snapshot);if(window.AgentopiaV1614Career)window.AgentopiaV1614Career(state.snapshot);if(window.AgentopiaV170Economy)window.AgentopiaV170Economy(state.snapshot);if(window.AgentopiaV171Business)window.AgentopiaV171Business(state.snapshot);if(window.AgentopiaV172Education)window.AgentopiaV172Education(state.snapshot);if(window.AgentopiaV173Health)window.AgentopiaV173Health(state.snapshot);if(window.AgentopiaV174Mobility)window.AgentopiaV174Mobility(state.snapshot);if(window.AgentopiaV100WorldContext)window.AgentopiaV100WorldContext(state.snapshot);}
 
   async function load(){
     try{
@@ -1222,3 +1222,70 @@
   setTimeout(()=>{ repairPulse(); updateVersion(); },250);
 })();
 /* AGENTOPIA_CITY_PULSE_TRUTH_V17451_END */
+
+
+/* AGENTOPIA_WORLD_CONTEXT_V100_JS_START */
+(() => {
+  const escW=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const pretty=v=>String(v??'').replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase());
+  const list=(el,rows,fn,empty)=>{if(!el)return;el.innerHTML=(rows||[]).length?(rows||[]).map(fn).join(''):`<div class="worldcontext-empty">${escW(empty||'No data yet.')}</div>`;};
+
+  window.AgentopiaV100WorldContext=function(s){
+    const w=s?.world_context||{};
+    const updated=document.getElementById('worldcontextUpdated');
+    if(!w || !Object.keys(w).length){
+      if(updated) updated.textContent='World Context sidecar not reporting yet';
+      return;
+    }
+    if(updated) updated.textContent=w.updated_at?String(w.updated_at).replace('T',' ').slice(0,19)+' UTC':'Updated';
+
+    const cal=w.calendar_week||{}, season=w.season||{}, weather=w.weather||{}, impacts=weather.impacts||{};
+    const d=document.getElementById('worldcontextDate'); if(d)d.textContent=cal.today_label||cal.today||'--';
+    const et=document.getElementById('worldcontextEngineTime'); if(et)et.textContent=(w.engine_time||'')+(w.world_week?' · Week '+w.world_week:'');
+
+    const stats=document.getElementById('worldcontextStats');
+    if(stats){
+      const temp=weather.temperature_f||{};
+      const vals=[
+        ['Season',pretty(season.name)],
+        ['Weather',pretty(weather.condition)],
+        ['Low / High',(temp.low??'—')+' / '+(temp.high??'—')+' °F'],
+        ['Precipitation',(weather.precipitation_chance_pct??'—')+'%'],
+        ['Transport',Number(impacts.transport_factor||1).toFixed(2)+'x'],
+        ['Calendar packs',Array.isArray(w.calendar_packs)?w.calendar_packs.length:0]
+      ];
+      stats.innerHTML=vals.map(x=>`<article><span>${escW(x[0])}</span><strong>${escW(x[1])}</strong></article>`).join('');
+    }
+
+    list(document.getElementById('worldcontextWeather'),w.daily_weather||[],x=>{
+      const t=x.temperature_f||{};
+      return `<article class="worldcontext-item"><div><strong>${escW(x.weekday||x.date)}</strong><span class="worldcontext-badge">${escW(pretty(x.condition))}</span></div><p>${escW(x.date||'')} · ${escW(t.low??'—')}–${escW(t.high??'—')} °F</p><small>${escW(x.precipitation_chance_pct??'—')}% precipitation · transport ${Number((x.impacts||{}).transport_factor||1).toFixed(2)}x</small></article>`;
+    },'No synthetic weather generated yet.');
+
+    list(document.getElementById('worldcontextHolidays'),w.holidays_this_week||[],x=>
+      `<article class="worldcontext-item"><div><strong>${escW(x.native_name||x.english_name||'Observance')}</strong><span>${escW(x.date||'')}</span></div><p>${escW(x.community_name||x.calendar_id||'')}</p><small>${escW(x.scope||'')} · ${escW(x.observance_type||'')}</small></article>`,
+      'No enabled public or explicitly assigned community observance falls in this simulation week.'
+    );
+
+    const impactRows=[
+      ['Transport',Number(impacts.transport_factor||1).toFixed(2)+'x'],
+      ['Outdoor work',Number(impacts.outdoor_work_factor||1).toFixed(2)+'x'],
+      ['Energy demand',Number(impacts.energy_demand_factor||1).toFixed(2)+'x'],
+      ['Health stress',pretty(impacts.health_stress||'normal')],
+      ['Public event disruption',impacts.public_event_disruption?'Yes':'No']
+    ];
+    list(document.getElementById('worldcontextImpacts'),impactRows,x=>
+      `<article class="worldcontext-item compact"><div><strong>${escW(x[0])}</strong><span>${escW(x[1])}</span></div></article>`,'No environmental effects available.');
+
+    list(document.getElementById('worldcontextCalendars'),w.calendar_packs||[],x=>
+      `<article class="worldcontext-item"><div><strong>${escW(x.community_name||x.calendar_id)}</strong><span class="worldcontext-badge">${escW(x.calendar_type||'calendar')}</span></div><p>${escW(x.calendar_id||'')} · ${Number(x.holiday_count||0)} observances</p><small>${escW((x.language||{}).name||(x.language||{}).bcp47||'')}</small></article>`,'No calendar packs enabled.');
+  };
+
+  document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
+    const v=document.getElementById('worldcontextView');
+    if(v)v.classList.toggle('active',btn.dataset.view==='worldcontext');
+  }));
+
+  console.info('[Agentopia] World Context v1.0.0 dashboard active');
+})();
+/* AGENTOPIA_WORLD_CONTEXT_V100_JS_END */
