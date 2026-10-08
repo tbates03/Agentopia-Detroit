@@ -997,6 +997,9 @@ class WorldReader:
         # AGENTOPIA_MOBILITY_SNAPSHOT_V174
         mobility_time = read_json(run / "mobility" / "summary.json", {})
 
+        # AGENTOPIA_WORLD_CONTEXT_SNAPSHOT_V100
+        world_context = read_json(run / "world_context" / "summary.json", {})
+
         return json_safe({
             "ok": True,
             "release_version": release_version,
@@ -1015,6 +1018,7 @@ class WorldReader:
             "education_skills": education_skills,
             "healthcare": healthcare,
             "mobility_time": mobility_time,
+            "world_context": world_context,
             "agentopia_root": str(self.root),
             "run": run.name,
             "runs": self.runs(),
