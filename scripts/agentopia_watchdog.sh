@@ -10,6 +10,7 @@ LOG="$APP/logs/agentopia-watchdog.log"
 mkdir -p "$APP/logs" "$APP/runtime"
 model_health(){ curl -fsS --max-time 3 "http://127.0.0.1:$1/health" >/dev/null 2>&1; }
 web_health(){ curl -fsS --max-time 3 http://127.0.0.1:8766/api/health >/dev/null 2>&1; }
+pulse_health(){ curl -fsS --max-time 3 http://127.0.0.1:8767/api/health >/dev/null 2>&1; }
 log(){ printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG"; }
 
 if [ -f "$STATE" ]; then
@@ -35,5 +36,9 @@ fi
 if ! web_health; then
   PY="$APP/.venv/bin/python"; [ -x "$PY" ] || PY="$(command -v python3 2>/dev/null || true)"
   [ -z "$PY" ] || nohup "$PY" "$APP/live_world/server.py" --agentopia-root "$APP" >> "$APP/logs/live-world-persistent.log" 2>&1 &
+fi
+if ! pulse_health; then
+  PY="$APP/.venv/bin/python"; [ -x "$PY" ] || PY="$(command -v python3 2>/dev/null || true)"
+  [ -z "$PY" ] || nohup "$PY" "$APP/scripts/agentopia_city_pulse.py" >> "$APP/logs/agentopia-city-pulse.log" 2>&1 &
 fi
 if model_health 8083; then touch "$APP/runtime/llama/cyber_available"; else rm -f "$APP/runtime/llama/cyber_available"; fi
