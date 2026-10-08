@@ -20,6 +20,9 @@ on:
       - "scripts/detroit_relevance_activation.py"
       - "scripts/detroit_civilization_invariants.py"
       - "scripts/stress_detroit_civilization.py"
+      - "scripts/migrate_detroit_rc2.py"
+      - "MIGRATE-AGENTOPIA-DETROIT-RC2.command"
+      - "docs/DETROIT_RC2_LIVE_MIGRATION.md"
       - "docs/DETROIT_GROWTH_AUDIT.md"
       - "docs/DETROIT_CIVILIZATION_SCALE_RC2.md"
       - ".github/workflows/detroit-growth-audit.yml"
@@ -78,10 +81,13 @@ jobs:
             scripts/detroit_state_store.py \
             scripts/detroit_relevance_activation.py \
             scripts/detroit_civilization_invariants.py \
-            scripts/stress_detroit_civilization.py
+            scripts/stress_detroit_civilization.py \
+            scripts/migrate_detroit_rc2.py
 
       - name: Shell syntax
-        run: bash -n scripts/start_detroit_persistent_service.sh
+        run: |
+          bash -n scripts/start_detroit_persistent_service.sh
+          bash -n MIGRATE-AGENTOPIA-DETROIT-RC2.command
 
       - name: Growth architecture regression audit
         run: python scripts/audit_detroit_growth.py --strict
