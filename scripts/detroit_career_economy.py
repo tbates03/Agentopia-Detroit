@@ -394,7 +394,19 @@ def seed_record(name: str, profile: dict[str,Any], year: int) -> dict[str,Any]:
     rec['aspirations']=choose_aspirations(profile,rec)
     return rec
 
-def build_vacancies(year:int,week:int,count:int=60)->list[dict[str,Any]]:
+def build_vacancies(year:int,week:int,count:int|None=None)->list[dict[str,Any]]:
+    # AGENTOPIA_CAREER_GROWTH_CAPACITY_V180
+    # The original fixed 60-vacancy market becomes a bottleneck as the active
+    # city grows. Scale opportunity supply with the bounded active AI cohort.
+    if count is None:
+        view=WORLD/'.active_persona_view'
+        if view.exists():
+            active_count=sum(1 for p in view.iterdir() if p.is_dir() or p.is_symlink())
+        else:
+            root=WORLD/'persona'
+            active_count=sum(1 for p in root.iterdir() if p.is_dir() and not (p/'_background.json').exists()) if root.exists() else 0
+        count=max(60,min(500,int(round(max(1,active_count)*0.75))))
+    count=max(1,int(count))
     rng=stable_rng('vacancies',year,week)
     weighted=[]
     for c in CATALOG:
