@@ -66,4 +66,18 @@ fi
 
 state "ENGINE_STARTING_$BACKEND"
 cd "$APP" || exit 34
-exec "$PY" "$APP/scripts/run_detroit_persistent.py"
+
+# AGENTOPIA_YEARLY_COHORT_RECYCLE_V180
+# Exit 75 is not a crash. The engine completed a simulation year and requests a
+# clean process boundary so population growth, active-cohort selection and
+# model assignments can refresh from the committed next-year checkpoint.
+while :; do
+  "$PY" "$APP/scripts/run_detroit_persistent.py"
+  RC=$?
+  if [ "$RC" -eq 75 ]; then
+    state "ENGINE_YEAR_ROLLOVER_$BACKEND"
+    sleep 2
+    continue
+  fi
+  exit "$RC"
+done
