@@ -51,3 +51,17 @@ Current alpha limitations include:
 - model weights are not distributed
 - private persistent world state is not distributed
 - sanitized starter world is not yet included
+
+
+### Live Right-Sizing Performance panel
+
+- added host CPU and memory telemetry
+- added live model busy-slot telemetry
+- added privacy-safe per-inference timing records
+- added request counts and success rate
+- added average observed inference latency
+- added task distribution across 350M / 1.2B / 2.6B tiers
+- added requests-per-minute visibility
+- added automatic City Pulse telemetry startup and watchdog recovery
+
+The telemetry record intentionally excludes prompts, responses, credentials and citizen conversation content.
