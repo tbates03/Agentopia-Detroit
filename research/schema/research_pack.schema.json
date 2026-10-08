@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agentopia Right-Sizing Research Pack",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "pack_id",
+    "title",
+    "contributors",
+    "provenance",
+    "tasks",
+    "consent"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "pack_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160
+    },
+    "contributors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "github"
+        ],
+        "properties": {
+          "github": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "basis",
+        "notes"
+      ],
+      "properties": {
+        "basis": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "lived_experience",
+              "professional_experience",
+              "community_review",
+              "fluent_language_review",
+              "authoritative_sources"
+            ]
+          }
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "domain",
+          "occupation",
+          "language",
+          "native_task",
+          "expected_output",
+          "evaluation"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "occupation": {
+            "type": "string"
+          },
+          "language": {
+            "type": "object",
+            "required": [
+              "bcp47",
+              "name"
+            ],
+            "properties": {
+              "bcp47": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "native_task": {
+            "type": "string",
+            "minLength": 10
+          },
+          "english_summary": {
+            "type": "string"
+          },
+          "expected_output": {
+            "type": "string",
+            "minLength": 3
+          },
+          "evaluation": {
+            "type": "string",
+            "minLength": 10
+          },
+          "regional_context": {
+            "type": "string"
+          },
+          "source_notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "consent": {
+      "type": "object",
+      "required": [
+        "public_research_evaluation",
+        "model_training_finetuning"
+      ],
+      "properties": {
+        "public_research_evaluation": {
+          "const": true
+        },
+        "model_training_finetuning": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
