@@ -55,6 +55,10 @@ if [ -f "$APP/scripts/detroit_humanity_daemon.py" ] && ! pgrep -f '[d]etroit_hum
   nohup "$PY" "$APP/scripts/detroit_humanity_daemon.py" >> "$APP/logs/detroit-humanity.log" 2>&1 &
 fi
 
+if [ -f "$APP/scripts/detroit_world_context_daemon.py" ] && ! pgrep -f '[d]etroit_world_context_daemon.py' >/dev/null 2>&1; then
+  nohup "$PY" "$APP/scripts/detroit_world_context_daemon.py" >> "$APP/logs/detroit-world-context.log" 2>&1 &
+fi
+
 # Cyber is optional and never blocks the city from starting.
 if [ "$BACKEND" = llama ] && ! pgrep -f '[s]tart_detroit_cyber_async.sh' >/dev/null 2>&1; then
   nohup "$APP/scripts/start_detroit_cyber_async.sh" >> "$APP/logs/cyber-async-bootstrap.log" 2>&1 &
