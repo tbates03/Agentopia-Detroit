@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import threading
 from pathlib import Path
@@ -1418,6 +1419,41 @@ def god_generate_encounter_events(
     verify_logger = get_verify_logger(feature="encounter_activity")
 
     config = get_config()
+
+    # AGENTOPIA_ENCOUNTER_CONTEXT_BOUND_V180
+    # Encounter generation used to place every idle citizen and every brief
+    # profile into one God-model prompt. Bound and rotate that global context so
+    # population growth does not become a context-window ceiling.
+    growth = config.get("world", {}).get("growth", {})
+    if not isinstance(growth, dict):
+        growth = {}
+    try:
+        per_day_limit = int(
+            os.environ.get(
+                "AGENTOPIA_ENCOUNTER_CONTEXT_AGENT_LIMIT",
+                str(growth.get("encounter_prompt_agents_per_day", 48)),
+            )
+        )
+    except Exception:
+        per_day_limit = 48
+    per_day_limit = max(2, per_day_limit)
+
+    bounded_idle: Dict[int, Dict[str, List[str]]] = {}
+    for day, agents_info in idle_agents_by_day.items():
+        names = sorted(
+            agents_info.keys(),
+            key=lambda name: hashlib.sha256(
+                f"encounter-sample|{current_time}|D{day}|{name}".encode("utf-8")
+            ).hexdigest(),
+        )
+        selected = names[:per_day_limit]
+        bounded_idle[day] = {name: agents_info[name] for name in selected}
+    idle_agents_by_day = bounded_idle
+
+    max_possible = sum(len(v) // 2 for v in idle_agents_by_day.values())
+    total_encounters = min(int(total_encounters), max_possible)
+    if total_encounters <= 0:
+        return []
 
     # Build name -> agent mapping for profile lookup
     name2agent = {agent.name: agent for agent in agents}
