@@ -23,6 +23,9 @@ on:
       - "scripts/migrate_detroit_rc2.py"
       - "MIGRATE-AGENTOPIA-DETROIT-RC2.command"
       - "docs/DETROIT_RC2_LIVE_MIGRATION.md"
+      - "scripts/repair_detroit_launchd.sh"
+      - "REPAIR-AGENTOPIA-DETROIT-LAUNCHD.command"
+      - "docs/DETROIT_LAUNCHD_RECOVERY.md"
       - "docs/DETROIT_GROWTH_AUDIT.md"
       - "docs/DETROIT_CIVILIZATION_SCALE_RC2.md"
       - ".github/workflows/detroit-growth-audit.yml"
@@ -88,6 +91,8 @@ jobs:
         run: |
           bash -n scripts/start_detroit_persistent_service.sh
           bash -n MIGRATE-AGENTOPIA-DETROIT-RC2.command
+          bash -n scripts/repair_detroit_launchd.sh
+          bash -n REPAIR-AGENTOPIA-DETROIT-LAUNCHD.command
 
       - name: Growth architecture regression audit
         run: python scripts/audit_detroit_growth.py --strict
