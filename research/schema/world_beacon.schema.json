@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agentopia World Beacon",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "world_id",
+    "world_name",
+    "maintainer",
+    "repository",
+    "progress",
+    "simulated_context",
+    "right_sizing",
+    "consent"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "world_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{1,63}$"
+    },
+    "world_name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 100
+    },
+    "maintainer": {
+      "type": "object",
+      "required": [
+        "github"
+      ],
+      "properties": {
+        "github": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "repository": {
+      "type": "string",
+      "format": "uri"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "simulated_context": {
+      "type": "object",
+      "required": [
+        "languages"
+      ],
+      "properties": {
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20
+        },
+        "languages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "bcp47",
+              "name"
+            ],
+            "properties": {
+              "bcp47": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "progress": {
+      "type": "object",
+      "required": [
+        "weeks_completed",
+        "checkpoint_year",
+        "checkpoint_week"
+      ],
+      "properties": {
+        "weeks_completed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checkpoint_year": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "checkpoint_week": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "population": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "hardware": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "logical_cpus": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "memory_gb": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "right_sizing": {
+      "type": "object",
+      "required": [
+        "local_inference",
+        "model_tiers",
+        "requests_by_tier"
+      ],
+      "properties": {
+        "local_inference": {
+          "type": "boolean"
+        },
+        "model_tiers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requests_by_tier": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "success_percent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "avg_latency_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "research_packs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "consent": {
+      "type": "object",
+      "required": [
+        "public_research_evaluation"
+      ],
+      "properties": {
+        "public_research_evaluation": {
+          "const": true
+        },
+        "model_training_finetuning": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
