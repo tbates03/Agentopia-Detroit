@@ -29,6 +29,52 @@ def health(port):
     except Exception:
         return False
 
+
+# AGENTOPIA_ENGINE_HEARTBEAT_RC2_EARLY
+# Start liveness reporting before growth preflight, relevance selection, config
+# imports, or World construction. The launchd wrapper clears any stale heartbeat
+# immediately before launching this process.
+import threading as _agentopia_hb_threading
+import time as _agentopia_hb_time
+_ENGINE_HEARTBEAT = ROOT / "runtime" / "engine_heartbeat.json"
+_ENGINE_HEARTBEAT_ERROR = ROOT / "runtime" / "engine_heartbeat.error.log"
+
+def _agentopia_write_heartbeat(phase: str = "initializing") -> None:
+    try:
+        _ENGINE_HEARTBEAT.parent.mkdir(parents=True, exist_ok=True)
+        _tmp = _ENGINE_HEARTBEAT.with_name(
+            f"{_ENGINE_HEARTBEAT.name}.{os.getpid()}.tmp"
+        )
+        _tmp.write_text(json.dumps({
+            "pid": os.getpid(),
+            "unix": _agentopia_hb_time.time(),
+            "version": VERSION,
+            "world": "detroit_persistent",
+            "phase": phase,
+        }, indent=2), encoding="utf-8")
+        _tmp.replace(_ENGINE_HEARTBEAT)
+    except Exception as exc:
+        try:
+            _ENGINE_HEARTBEAT_ERROR.parent.mkdir(parents=True, exist_ok=True)
+            _ENGINE_HEARTBEAT_ERROR.write_text(
+                f"{now()} pid={os.getpid()} {type(exc).__name__}: {exc}\n",
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
+
+def _agentopia_engine_heartbeat() -> None:
+    while True:
+        _agentopia_write_heartbeat("running_or_initializing")
+        _agentopia_hb_time.sleep(5)
+
+_agentopia_write_heartbeat("process_started")
+_agentopia_hb_threading.Thread(
+    target=_agentopia_engine_heartbeat,
+    name="agentopia-engine-heartbeat",
+    daemon=True,
+).start()
+
 if not (WORLD / "config.json").exists() or not (WORLD / "persona").exists():
     raise SystemExit(f"Persistent Detroit world is incomplete: {WORLD}")
 
@@ -246,51 +292,6 @@ class PersistentDetroitWorld(World):
         finally:
             self.config["time"]["n_year"] = original_n_year
         return "year_complete"
-
-# AGENTOPIA_ENGINE_HEARTBEAT_RC2_EARLY
-# Start liveness reporting before expensive World/agent construction. A reboot
-# can spend minutes rebuilding model/persona state; the heartbeat must describe
-# that initializing RC2 process rather than leave an old process heartbeat in
-# place until World(...) returns.
-import threading as _agentopia_hb_threading
-import time as _agentopia_hb_time
-_ENGINE_HEARTBEAT = ROOT / "runtime" / "engine_heartbeat.json"
-_ENGINE_HEARTBEAT_ERROR = ROOT / "runtime" / "engine_heartbeat.error.log"
-
-def _agentopia_write_heartbeat(phase: str = "initializing") -> None:
-    try:
-        _ENGINE_HEARTBEAT.parent.mkdir(parents=True, exist_ok=True)
-        _tmp = _ENGINE_HEARTBEAT.with_name(
-            f"{_ENGINE_HEARTBEAT.name}.{os.getpid()}.tmp"
-        )
-        _tmp.write_text(json.dumps({
-            "pid": os.getpid(),
-            "unix": _agentopia_hb_time.time(),
-            "version": VERSION,
-            "world": "detroit_persistent",
-            "phase": phase,
-        }, indent=2), encoding="utf-8")
-        _tmp.replace(_ENGINE_HEARTBEAT)
-    except Exception as exc:
-        try:
-            _ENGINE_HEARTBEAT_ERROR.write_text(
-                f"{now()} pid={os.getpid()} {type(exc).__name__}: {exc}\n",
-                encoding="utf-8",
-            )
-        except Exception:
-            pass
-
-def _agentopia_engine_heartbeat() -> None:
-    while True:
-        _agentopia_write_heartbeat("running_or_initializing")
-        _agentopia_hb_time.sleep(5)
-
-_agentopia_write_heartbeat("boot_pre_world")
-_agentopia_hb_threading.Thread(
-    target=_agentopia_engine_heartbeat,
-    name="agentopia-engine-heartbeat",
-    daemon=True,
-).start()
 
 # AGENTOPIA_COGNITIVE_RUNTIME_V130
 try:
