@@ -1,0 +1,172 @@
+{
+  "schema_version": "1.0",
+  "calendar_id": "us-public-civic",
+  "community_name": "United States public/federal civic calendar",
+  "calendar_type": "public_civic",
+  "region": "United States",
+  "language": {
+    "bcp47": "en-US",
+    "name": "English (United States)"
+  },
+  "provenance": {
+    "basis": [
+      "authoritative_sources"
+    ],
+    "notes": "Public/federal civic baseline using standard U.S. federal holiday rules. This pack is not presented as a complete U.S. cultural calendar."
+  },
+  "holidays": [
+    {
+      "id": "new-years-day",
+      "native_name": "New Year's Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "fixed",
+        "month": 1,
+        "day": 1,
+        "observed_if_weekend": true
+      }
+    },
+    {
+      "id": "mlk-day",
+      "native_name": "Birthday of Martin Luther King, Jr.",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "nth_weekday",
+        "month": 1,
+        "weekday": "monday",
+        "nth": 3
+      }
+    },
+    {
+      "id": "washington-birthday",
+      "native_name": "Washington's Birthday",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "nth_weekday",
+        "month": 2,
+        "weekday": "monday",
+        "nth": 3
+      }
+    },
+    {
+      "id": "memorial-day",
+      "native_name": "Memorial Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "last_weekday",
+        "month": 5,
+        "weekday": "monday"
+      }
+    },
+    {
+      "id": "juneteenth",
+      "native_name": "Juneteenth National Independence Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "fixed",
+        "month": 6,
+        "day": 19,
+        "observed_if_weekend": true
+      }
+    },
+    {
+      "id": "independence-day",
+      "native_name": "Independence Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "fixed",
+        "month": 7,
+        "day": 4,
+        "observed_if_weekend": true
+      }
+    },
+    {
+      "id": "labor-day",
+      "native_name": "Labor Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "nth_weekday",
+        "month": 9,
+        "weekday": "monday",
+        "nth": 1
+      }
+    },
+    {
+      "id": "columbus-day",
+      "native_name": "Columbus Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "nth_weekday",
+        "month": 10,
+        "weekday": "monday",
+        "nth": 2
+      }
+    },
+    {
+      "id": "veterans-day",
+      "native_name": "Veterans Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "public_services_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "fixed",
+        "month": 11,
+        "day": 11,
+        "observed_if_weekend": true
+      }
+    },
+    {
+      "id": "thanksgiving-day",
+      "native_name": "Thanksgiving Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "many_businesses_closed_or_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "nth_weekday",
+        "month": 11,
+        "weekday": "thursday",
+        "nth": 4
+      }
+    },
+    {
+      "id": "christmas-day",
+      "native_name": "Christmas Day",
+      "language": "en-US",
+      "observance_type": "public_holiday",
+      "business_effect": "many_businesses_closed_or_reduced",
+      "community_effect": "public_observance",
+      "rule": {
+        "type": "fixed",
+        "month": 12,
+        "day": 25,
+        "observed_if_weekend": true
+      }
+    }
+  ]
+}
