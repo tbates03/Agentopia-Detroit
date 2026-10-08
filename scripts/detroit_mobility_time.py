@@ -171,6 +171,20 @@ def corridor_for(a:str,b:str)->str:
     return 'Detroit surface streets'
 
 def weather_for(year:int,week:int)->dict[str,Any]:
+    # World Context v1.0.0 is the environmental authority when available.
+    # This preserves one weather truth across mobility and citizen context.
+    ctx=read_json(WORLD/'world_context'/'summary.json',{})
+    if isinstance(ctx,dict) and int(ctx.get('world_year',-1) or -1)==year and int(ctx.get('world_week',-1) or -1)==week:
+        w=ctx.get('weather',{}) if isinstance(ctx.get('weather'),dict) else {}
+        impacts=w.get('impacts',{}) if isinstance(w.get('impacts'),dict) else {}
+        condition=str(w.get('condition') or '')
+        if condition:
+            return {
+                'condition':condition,
+                'travel_time_factor':float(impacts.get('transport_factor',1.0) or 1.0),
+                'source':'world_context_v1.0.0',
+            }
+    # Backward-compatible deterministic fallback for worlds without World Context.
     rng=stable_rng('detroit-weather',year,week);w=(week-1)%52+1
     if w<=9 or w>=48:
         kind=rng.choices(['cold_clear','snow','winter_mix'],[0.54,0.31,0.15])[0];impact={'cold_clear':1.03,'snow':1.28,'winter_mix':1.35}[kind]
@@ -180,7 +194,7 @@ def weather_for(year:int,week:int)->dict[str,Any]:
         kind=rng.choices(['clear','hot','storm'],[0.62,0.23,0.15])[0];impact={'clear':1.0,'hot':1.03,'storm':1.20}[kind]
     else:
         kind=rng.choices(['clear','rain','wind'],[0.58,0.30,0.12])[0];impact={'clear':1.0,'rain':1.11,'wind':1.08}[kind]
-    return {'condition':kind,'travel_time_factor':impact}
+    return {'condition':kind,'travel_time_factor':impact,'source':'mobility_fallback'}
 
 def household_maps()->tuple[dict[str,Any],dict[str,Any],dict[str,str]]:
     hh=read_json(HUMAN/'households.json',{'households':{}}).get('households',{})
