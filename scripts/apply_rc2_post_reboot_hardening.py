@@ -152,24 +152,34 @@ def main() -> int:
         print("\n=== HEARTBEAT VERIFY ===")
         hb_path = live / "runtime" / "engine_heartbeat.json"
         hb_error = live / "runtime" / "engine_heartbeat.error.log"
-        engine_pids = guard.pids_for("scripts/run_detroit_persistent.py")
-        expected_pid = engine_pids[0] if engine_pids else None
         hb = {}
         deadline = __import__("time").monotonic() + 90
         last_error = None
+
+        def _engine_command(pid: int) -> str:
+            cp = subprocess.run(
+                ["ps", "-p", str(pid), "-o", "command="],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+            return (cp.stdout or "").strip()
+
         while __import__("time").monotonic() < deadline:
             try:
                 if hb_path.exists():
                     hb = json.loads(hb_path.read_text(encoding="utf-8"))
                     pid = int(hb.get("pid") or 0)
-                    if (
-                        hb.get("version") == "1.8.0-RC2"
-                        and pid > 0
-                        and (expected_pid is None or pid == expected_pid)
-                    ):
+                    hb_unix = float(hb.get("unix") or 0.0)
+                    age = max(0.0, __import__("time").time() - hb_unix)
+                    if hb.get("version") == "1.8.0-RC2" and pid > 0 and age <= 20:
                         try:
                             os.kill(pid, 0)
-                            break
+                            cmd = _engine_command(pid)
+                            expected_script = str(live / "scripts" / "run_detroit_persistent.py")
+                            if expected_script in cmd:
+                                break
                         except OSError:
                             pass
             except Exception as exc:
@@ -177,9 +187,11 @@ def main() -> int:
             __import__("time").sleep(1)
         else:
             err_text = hb_error.read_text(encoding="utf-8", errors="replace") if hb_error.exists() else ""
+            current_pids = guard.pids_for("scripts/run_detroit_persistent.py")
             raise RuntimeError(
-                f"fresh RC2 heartbeat did not appear for engine pid={expected_pid}; "
-                f"last={hb!r}; read_error={last_error}; writer_error={err_text.strip() or 'none'}"
+                f"no fresh heartbeat from a live RC2 engine process; "
+                f"current_engine_pids={current_pids}; last={hb!r}; "
+                f"read_error={last_error}; writer_error={err_text.strip() or 'none'}"
             )
         print(json.dumps(hb, indent=2))
 
