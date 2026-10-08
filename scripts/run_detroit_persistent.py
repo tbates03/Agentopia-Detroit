@@ -257,6 +257,18 @@ except Exception as _healthcare_error:
     print(f"[healthcare] WARNING: sidecar initialization failed: {_healthcare_error}")
 # AGENTOPIA_HEALTHCARE_RUNTIME_V173_END
 
+# AGENTOPIA_WORLD_CONTEXT_RUNTIME_V100_START
+try:
+    scripts_dir = ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    import detroit_world_context as _agentopia_world_context
+    _agentopia_world_context.apply_runtime_patches()
+    print("[world-context] Weather, Seasons & Cultural Calendar Engine v1.0.0 active")
+except Exception as _world_context_error:
+    print(f"[world-context] WARNING: sidecar initialization failed: {_world_context_error}")
+# AGENTOPIA_WORLD_CONTEXT_RUNTIME_V100_END
+
 # AGENTOPIA_MOBILITY_RUNTIME_V174_START
 try:
     scripts_dir = ROOT / "scripts"
