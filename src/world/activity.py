@@ -835,6 +835,44 @@ class SoloActivity(Activity):
         outcome_text_or_none, is_consumption, deltas_or_none = (
             self._evaluate_solo_activity(agent, activity_content)
         )
+
+        # AGENTOPIA_V17451_HF2_SOLO_NONE_FAIL_FORWARD
+        # A failed God-model evaluation must never terminate the world.
+        # Convert an empty non-consumption evaluation into a deterministic
+        # no-op outcome so downstream logging and ActionOutcome construction
+        # always receive valid types.
+        if not is_consumption:
+            if not isinstance(outcome_text_or_none, str) or not outcome_text_or_none.strip():
+                if logger:
+                    logger.warning(
+                        "[VERIFY-SOLO-STEP3][FAIL-FORWARD] "
+                        "No valid outcome text returned; applying zero-impact outcome"
+                    )
+                outcome_text_or_none = (
+                    "The activity ends without a clear measurable change."
+                )
+
+            if not isinstance(deltas_or_none, dict):
+                if logger:
+                    logger.warning(
+                        "[VERIFY-SOLO-STEP3][FAIL-FORWARD] "
+                        "No valid delta mapping returned; applying zero deltas"
+                    )
+                deltas_or_none = {}
+
+            deltas_or_none = dict(deltas_or_none)
+
+            if not isinstance(deltas_or_none.get("delta_vitality"), (int, float)):
+                deltas_or_none["delta_vitality"] = 0
+            if not isinstance(deltas_or_none.get("delta_fulfillment"), dict):
+                deltas_or_none["delta_fulfillment"] = {}
+            if not isinstance(deltas_or_none.get("delta_skills"), dict):
+                deltas_or_none["delta_skills"] = {}
+            if not isinstance(deltas_or_none.get("delta_money"), (int, float)):
+                deltas_or_none["delta_money"] = 0
+            if not isinstance(deltas_or_none.get("gain_items"), list):
+                deltas_or_none["gain_items"] = []
+
         if logger:
             logger.info(f"[VERIFY-SOLO-STEP3] Stage 1 evaluation completed")
             logger.info(f"[VERIFY-SOLO-STEP3] Is consumption event: {is_consumption}")

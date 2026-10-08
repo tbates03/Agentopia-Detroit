@@ -4,7 +4,7 @@ import json
 import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.world.clock import Clock, Stage, TimeState
 from src.agents.role_agent import RoleAgent
@@ -87,6 +87,12 @@ class World:
         # Cache name -> agent mapping (agents don't change after init)
         self._name2agent: Dict[str, RoleAgent] = {a.name: a for a in self.agents}
 
+        # Agentopia faction/recruitment layer.
+        from src.world.factions import FactionEngine
+
+        self.faction_engine = FactionEngine(self)
+        self.faction_engine.bootstrap()
+
     # Initialization ---------------------------------------------------------
     def _persona_root(self) -> Path:
         return Path("data") / self.data_dir / "persona"
@@ -98,7 +104,11 @@ class World:
         if not root.exists():
             raise FileNotFoundError(f"persona root not found: {root}")
         # Every persona should have a profile; for simplicity we no longer filter here. If one is missing, an error will be raised later at read time to surface the problem early.
-        all_dirs = [p for p in sorted(root.iterdir()) if p.is_dir()]
+        all_dirs = [
+            p
+            for p in sorted(root.iterdir())
+            if p.is_dir() and not (p / "_background.json").exists()
+        ]
         names = (
             [p.name for p in all_dirs[:max_agents]]
             if max_agents
@@ -659,6 +669,10 @@ class World:
             )
 
     def step(self) -> None:
+        from src.world.simulation_speed import apply_speed_profile
+        self.speed_state = apply_speed_profile(self)
+        self.logger.info(f"== SPEED == {self.speed_state['label']} | concurrency={self.speed_state['effective_concurrency']} | timeline={self.speed_state['timeline_multiplier']}x")
+
         # Stage 0: before week start (fulfillment decay + weekly income)
         self._before_week_start()
         for agent in self.agents:
@@ -772,7 +786,11 @@ class World:
                 from threading import Semaphore
 
                 cfg = get_config()
-                max_concurrency = int(cfg["max_concurrency"])
+                # AGENTOPIA_ACTIVITY_EFFECTIVE_CONCURRENCY_V1745
+                configured_max = int(cfg["max_concurrency"])
+                speed_state = getattr(self, "speed_state", {}) or {}
+                max_concurrency = int(speed_state.get("effective_concurrency", configured_max))
+                max_concurrency = max(1, min(max_concurrency, configured_max))
 
                 n_joint = len(joint_acts) + len(encounter_acts)
                 n_solo = len(solo_acts)
@@ -830,9 +848,43 @@ class World:
                             ex.submit(run_with_slots, act.run, slots, parallel=True)
                         )
 
-                    # Wait for all
-                    for f in futures:
-                        f.result()
+                    # AGENTOPIA_ACTIVITY_BARRIER_V1745
+                    # Each model request is bounded in utils.py. A SoloActivity can
+                    # legitimately perform several sequential bounded calls, so a
+                    # fixed 420-second per-future kill creates false-positive restarts.
+                    # Track completion by activity identity and isolate completed
+                    # exceptions without terminating the whole persistent world.
+                    def _activity_label(act):
+                        aid = getattr(act, "activity_id", "unknown")
+                        try:
+                            names = ",".join(a.name for a in getattr(act, "agents", []))
+                        except Exception:
+                            names = "unknown"
+                        return f"{act.__class__.__name__}:{aid}:{names}"
+
+                    activity_labels = (
+                        [_activity_label(a) for a in (joint_acts + encounter_acts)]
+                        + [_activity_label(a) for a in solo_acts]
+                        + [_activity_label(a) for a in sorted_public]
+                    )
+                    future_labels = {f: activity_labels[i] for i, f in enumerate(futures)}
+                    import time as _activity_time
+                    barrier_started = _activity_time.monotonic()
+                    for f in as_completed(futures):
+                        label = future_labels.get(f, "unknown")
+                        try:
+                            f.result()
+                            self.logger.info(
+                                f"[ACTIVITY_RESILIENCE] completed {label} "
+                                f"barrier_elapsed={_activity_time.monotonic()-barrier_started:.1f}s"
+                            )
+                        except Exception as exc:
+                            self.logger.exception(
+                                f"[ACTIVITY_RESILIENCE] failed {label}: {exc}"
+                            )
+                            # Fail forward for completed exceptions. The individual
+                            # activity is skipped; the rest of Detroit continues.
+                            continue
             else:
                 # Sequential fallback
                 for act in joint_acts + encounter_acts:
@@ -863,6 +915,11 @@ class World:
         else:
             for agent in self.agents:
                 agent.settle_week()
+
+        # Factions recruit after the normal weekly life cycle. New recruits
+        # participate beginning with the next simulated week.
+        if getattr(self, "faction_engine", None) is not None:
+            self.faction_engine.weekly_tick()
 
     # Internal --------------------------------------------------------------
     # def _build_today_activities(self) -> tuple[list[JointActivity], list[SoloActivity]]:
@@ -1349,6 +1406,13 @@ class World:
         current_profile = agent.dm.read_profile()
 
         new_profile = update_yearly_profile(agent, current_year, next_year)
+
+        # Faction identity is a world-system field, not something the yearly
+        # profile model may silently erase. Preserve it across year changes.
+        for persistent_key in ("faction", "world_role", "founding_citizen", "founder_id", "lineage", "origin"):
+            if persistent_key in current_profile:
+                new_profile[persistent_key] = current_profile[persistent_key]
+
         agent.dm.write_profile(new_profile, year=next_year)
         self.logger.info(f"Profile updated: {agent.name} for Y{next_year}")
 

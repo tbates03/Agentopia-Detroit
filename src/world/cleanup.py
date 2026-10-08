@@ -9,7 +9,10 @@ from src.world.clock import TimeState
 _LOGGER = get_logger("cleanup", quiet=True)
 
 # advantages.jsonl: time is a dict {"start": ..., "end": ...}, not a TimeState string
-_EXCLUDED_NAMES = {"advantages.jsonl"}
+# AGENTOPIA_V17451_HF2_STATIC_LINEAGE_CLEANUP
+# detroit_lineage.jsonl is persistent identity/lineage metadata, not a
+# simulation-time append-only stream. It intentionally has no `time` field.
+_EXCLUDED_NAMES = {"advantages.jsonl", "detroit_lineage.jsonl"}
 
 
 def _cutoff_index(lines: list[str], *, start_time: TimeState) -> tuple[int | None, int]:
@@ -72,6 +75,23 @@ def _clean_one_file(path: Path, *, start_time: TimeState) -> bool:
     # Process line by line, keeping the original line text for writing back to
     # avoid unnecessary formatting changes.
     lines = raw.splitlines()
+    # AGENTOPIA_WALLCLOCK_JSONL_SKIP_V1743
+    # Agentopia core JSONL uses simulation TimeState strings such as Y2045-W01-...
+    # New sidecars may store audit/event time as ISO wall-clock timestamps.
+    # Those logs are persistent sidecar evidence and must not be interpreted by
+    # the core checkpoint cleanup parser.
+    for _line in lines:
+        if not _line.strip():
+            continue
+        try:
+            _obj = json.loads(_line)
+        except Exception:
+            break
+        _time = _obj.get("time") if isinstance(_obj, dict) else None
+        if isinstance(_time, str) and not _time.startswith("Y"):
+            return False
+        break
+
     idx, kept = _cutoff_index(lines, start_time=start_time)
     if idx is None:
         return False
@@ -119,6 +139,11 @@ def clean_append_only_jsonl_before(*, world_name: str, start_time: TimeState) ->
     deleted = 0
     scanned = 0
     for p in sorted(root.rglob("*.jsonl")):
+        # AGENTOPIA_DIGITAL_TWIN_PERSISTENT_HISTORY
+        # Digital Twin logs use wall-clock ISO timestamps, not Agentopia TimeState strings.
+        # They are permanent operational history and must survive simulation resume cleanup.
+        if "digital_twin" in p.parts:
+            continue
         if p.name in _EXCLUDED_NAMES:
             continue
         scanned += 1

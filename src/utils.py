@@ -1111,7 +1111,11 @@ def generate_with_fc(
             client = OpenAI(base_url=base_url, api_key=api_key)
 
             # Set per-request timeout on the client instance
-            req_timeout = kwargs.pop("timeout", 600)
+            req_timeout = kwargs.pop("timeout", 90)  # AGENTOPIA_ACTIVITY_RESILIENCE_V1744
+            try:
+                req_timeout = min(float(req_timeout), 90.0)
+            except (TypeError, ValueError):
+                req_timeout = 90.0
             client = client.with_options(timeout=req_timeout)
 
             max_output_tokens = _get_max_tokens_for_model(model, kwargs)
@@ -1204,6 +1208,7 @@ def generate_with_fc(
                         base_delay = 2
                         max_delay = 300  # max wait per attempt: 5 minutes
                         max_total_wait = 3600  # total wait ceiling: 1 hour
+                        max_total_wait = min(float(max_total_wait), 45.0)  # v1.7.4.4 transient retry ceiling
 
                         logger.warning(
                             f"[LLM] Connection/timeout error detected for model '{model}'. "
@@ -1635,7 +1640,7 @@ def generate_with_fc(
             nth_generation = _MAX_GENERATION  # skip retries, jump straight to fallback branch
 
         # Repetitive generation: retry at most 2 times — same prompt will likely truncate again
-        _MAX_REPETITIVE_RETRY = 2
+        _MAX_REPETITIVE_RETRY = 1
         if (
             "REPETITIVE_GENERATION" in error_str
             and nth_generation >= _MAX_REPETITIVE_RETRY

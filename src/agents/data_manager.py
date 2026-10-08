@@ -1038,6 +1038,31 @@ class DataManager:
         conflicts = f"{indent}- Conflicts:{profile['conflicts']}"
         values = f"{indent}- Values:{profile['values']}"
 
+        # Detroit civic identity
+        founder_id = profile.get("founder_id")
+        lineage = profile.get("lineage") if isinstance(profile.get("lineage"), dict) else {}
+        origin = profile.get("origin") if isinstance(profile.get("origin"), dict) else {}
+        if founder_id:
+            values += f"\n{indent}- Agentopia Detroit Founding Citizen: {founder_id}"
+        elif lineage.get("type"):
+            values += f"\n{indent}- Agentopia Detroit Lineage: {lineage.get('type')}"
+        if origin.get("city"):
+            place = ", ".join(str(x) for x in (origin.get("city"), origin.get("region"), origin.get("country")) if x)
+            values += f"\n{indent}- Civic Origin: {place}"
+
+        faction = profile.get("faction")
+        if isinstance(faction, dict) and faction.get("name"):
+            faction_name = str(faction.get("name"))
+            faction_role = str(faction.get("role") or "member")
+            faction_alignment = str(faction.get("alignment") or "")
+            faction_doctrine = str(faction.get("doctrine") or "")
+            values += (
+                f"\n{indent}- Faction: {faction_name}"
+                f"\n{double_indent}- Role: {faction_role}"
+                f"\n{double_indent}- Alignment: {faction_alignment}"
+                f"\n{double_indent}- Doctrine: {faction_doctrine}"
+            )
+
         # Talents
         talents = profile["talents"]
         talents_qualitative = f"{indent}- Qualitative: {talents['qualitative']}"
@@ -1086,7 +1111,7 @@ class DataManager:
         """
         persona_text = self.character_prompt()
         recent_scratchpads = self.list_scratchpads(
-            character_limit=50, required_characters=required_characters
+            character_limit=24, required_characters=required_characters
         )
 
         from src.agents.prompts import (

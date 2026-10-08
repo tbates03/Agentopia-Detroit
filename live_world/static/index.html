@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Agentopia Detroit</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div><h1>Agentopia Detroit</h1><p>From Fort Detroit to the fictional 2045 cyberpunk city.</p></div>
+    </div>
+    <div class="top-controls">
+      <label>World <select id="runSelect" aria-label="World run"></select></label>
+      <div id="speedControls" class="speed-controls" aria-label="Simulation speed">
+        <button type="button" class="speed-btn" data-speed="slow">Slow</button>
+        <button type="button" class="speed-btn active" data-speed="normal">Normal</button>
+        <button type="button" class="speed-btn" data-speed="x2">Fast x2</button>
+        <button type="button" class="speed-btn" data-speed="x5">Faster x5</button>
+        <button type="button" class="speed-btn" data-speed="x10">Fastest x10</button>
+        <button type="button" class="speed-btn ludicrous" data-speed="x1000">Ludicrous x1000</button>
+      </div>
+      <button id="refreshBtn" class="button">Refresh</button>
+      <label class="switch"><input id="autoRefresh" type="checkbox" checked><span>Live</span></label>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="world-column">
+      <div class="hud-row">
+        <div class="stat"><span class="label">Simulation</span><strong id="simTime">Waiting for data…</strong></div>
+        <div class="stat"><span class="label">Phase</span><strong id="phaseName">Initializing</strong></div>
+        <div class="stat"><span class="label">Engine</span><strong id="engineState">Checking…</strong></div>
+        <div class="stat"><span class="label">Population</span><strong id="agentCount">—</strong></div>
+        <div class="stat"><span class="label">Conversations</span><strong id="messageCount">—</strong></div>
+        <div class="stat"><span class="label">World</span><strong id="runName">—</strong></div>
+      </div>
+
+      <section class="engine-strip">
+        <div><span class="label">Last Agentopia write</span><strong id="lastWrite">Waiting…</strong></div>
+        <div><span class="label">Data source</span><strong id="lastWritePath">—</strong></div>
+        <div class="engine-help" id="engineHelp">The observer is checking Agentopia.</div>
+      </section>
+
+      <div class="view-tabs" role="tablist" aria-label="Visualization">
+        <button class="tab active" data-view="map" role="tab">Neighborhood</button>
+        <button class="tab" data-view="buildings" role="tab">Buildings</button>
+        <button class="tab" data-view="network" role="tab">Relationships</button>
+        <button class="tab" data-view="cognition" role="tab">Cognitive Society</button>
+        <button class="tab" data-view="humanity" role="tab">Human Lifecycle</button>
+        <button class="tab" data-view="missions" role="tab">Missions & Power</button>
+        <button class="tab" data-view="finance" role="tab">Financial Network</button>
+        <button class="tab" data-view="career" role="tab">Career Economy</button>
+        <button class="tab" data-view="economy" role="tab">Human Economy</button>
+        <button class="tab" data-view="business" role="tab">Business Economy</button>
+        <button class="tab" data-view="education" role="tab">Education & Skills</button>
+        <button class="tab" data-view="healthcare" role="tab">Health & Healthcare</button>
+        <button class="tab" data-view="mobility" role="tab">Mobility & Time</button>
+      </div>
+
+      <section id="mapView" class="view-panel active">
+        <div id="worldMap" class="world-map" aria-label="Agent world map"></div>
+      </section>
+      <section id="buildingsView" class="view-panel">
+        <div class="building-directory-head">
+          <div><strong>Building Directory</strong><span>Every known public building and private home is clickable.</span></div>
+          <input id="buildingSearch" type="search" placeholder="Find a building or citizen home" aria-label="Find a building">
+        </div>
+        <div id="buildingDirectory" class="building-directory"></div>
+      </section>
+      <section id="networkView" class="view-panel">
+        <svg id="networkSvg" viewBox="0 0 1000 620" role="img" aria-label="Agent relationship network"></svg>
+        <div class="network-note">Line weight represents observed message volume, not affection.</div>
+      </section>
+
+      <section id="cognitionView" class="view-panel">
+        <div class="cognition-shell">
+          <div class="cognition-head"><div><strong>Cognitive Society Engine</strong><span>World truth != citizen knowledge != citizen belief</span></div><span id="cognitionUpdated" class="muted">Waiting...</span></div>
+          <div id="cognitionStats" class="cognition-stats"></div>
+          <div class="cognition-grid">
+            <section><h3>Persona fidelity</h3><div id="cognitionDrift"></div></section>
+            <section><h3>Adaptive model routing</h3><div id="cognitionRouting"></div></section>
+            <section><h3>Institutional memory</h3><div id="cognitionInstitutions"></div></section>
+            <section><h3>Cultural transmission</h3><div id="cognitionCulture"></div></section>
+          </div>
+        </div>
+      </section>
+
+      <section id="humanityView" class="view-panel">
+        <div class="humanity-shell">
+          <div class="humanity-head"><div><strong>Human Lifecycle & Belief Engine</strong><span>births - aging - families - beliefs - independent radicalization model</span></div><span id="humanityUpdated" class="muted">Waiting...</span></div>
+          <div id="humanityStats" class="humanity-stats"></div>
+          <div class="humanity-grid">
+            <section><h3>Life stages</h3><div id="humanityAges"></div></section>
+            <section><h3>Family network</h3><div id="humanityKin"></div></section>
+            <section><h3>Belief landscape</h3><div id="humanityBeliefs"></div></section>
+            <section><h3>Safety & social support</h3><div id="humanitySafety"></div></section>
+          </div>
+        </div>
+      </section>
+
+      <section id="mobilityView" class="view-panel">
+        <div class="mobility-shell">
+          <div class="mobility-head"><div><strong>Agentopia Detroit Mobility & Time</strong><span>24-hour routines · commute time · cars/EVs/AVs · transit · walking/biking · congestion · corridors · delays</span></div><span id="mobilityUpdated" class="muted">Waiting...</span></div>
+          <div class="mobility-clock"><div><span>PHASE-DERIVED DETROIT CITY CLOCK</span><strong id="mobilityClock">--</strong></div><small id="mobilityPhase">Agentopia weekly phase mapped to a human-readable 7-day schedule</small></div>
+          <div id="mobilityStats" class="mobility-stats"></div>
+          <div class="mobility-grid">
+            <section><h3>Mode share</h3><div id="mobilityModes"></div></section>
+            <section><h3>Busiest Detroit corridors</h3><div id="mobilityCorridors"></div></section>
+            <section><h3>Citizen commute reality</h3><div id="mobilityCitizens"></div></section>
+            <section><h3>Recent delays & incidents</h3><div id="mobilityEvents"></div></section>
+          </div>
+          <div class="mobility-policy"><strong>Mobility accounting rule:</strong> Human Economy remains the authority for citizen transportation debits. v1.7.4 turns that already-paid budget into persistent trips, modes, vehicles, commute time and mobility pressure without charging citizens twice. Zone coordinates are simulation abstractions, not real navigation data.</div>
+        </div>
+      </section>
+      <section class="timeline-strip">
+        <div class="section-title"><span>Detroit Continuum</span><span class="muted">Real history → fictional Agentopia future</span></div>
+        <div id="detroitTimeline" class="detroit-timeline"></div>
+      </section>
+
+      <section class="events-strip">
+        <div class="section-title"><span>Public events</span><span class="muted">Latest world-level events</span></div>
+        <div id="eventsList" class="event-cards"></div>
+      </section>
+    </section>
+
+    <aside class="side-column">
+      <section class="panel engine-panel">
+        <div class="section-title"><span>Agentopia engine</span><span id="engineBadge" class="muted">Checking</span></div>
+        <div id="engineLog" class="engine-log">Waiting for Agentopia log output…</div>
+      </section>
+
+      <section class="panel inspector">
+        <div class="section-title"><span>Citizen inspector</span><span id="selectedLocation" class="muted">Select an agent</span></div>
+        <div id="agentInspector" class="empty-state">Click any citizen to inspect current state, work, goals, memories, and relationships.</div>
+      </section>
+
+      <section class="panel conversation-panel">
+        <div class="section-title"><span>Conversation stream</span><span id="conversationBadge" class="muted">0 messages</span></div>
+        <div id="conversationList" class="conversation-list"></div>
+      </section>
+    </aside>
+        <section id="missionsView" class="view-panel">
+        <div class="mission-shell">
+          <div class="mission-head"><div><strong>Mission, Crime & Justice Engine</strong><span>persistent goals - simulated crime - protection - evidence - due process - faction evolution</span></div><span id="missionUpdated" class="muted">Waiting...</span></div>
+          <div id="missionStats" class="mission-stats"></div>
+          <div class="mission-leaders">
+            <section class="mission-card obsidian"><h3>Morbeious / Obsidian</h3><div id="missionObsidian"></div></section>
+            <section class="mission-card guardian"><h3>TGOT / ThAI Guardians</h3><div id="missionGuardians"></div></section>
+            <section class="mission-card government"><h3>Government / Public Safety</h3><div id="missionGovernment"></div></section>
+          </div>
+          <div class="mission-grid">
+            <section><h3>Active missions</h3><div id="missionActive"></div></section>
+            <section><h3>Open cases</h3><div id="missionCases"></div></section>
+            <section><h3>Faction evolution</h3><div id="missionFactions"></div></section>
+            <section><h3>Recent world events</h3><div id="missionEvents"></div></section>
+          </div>
+          <div class="mission-safety"><strong>Simulation boundary:</strong> criminal cyber activity is modeled abstractly inside fictional Agentopia. World truth, citizen knowledge, Guardian knowledge, and police evidence remain separate.</div>
+        </div>
+      </section>
+
+      <section id="financeView" class="view-panel">
+        <div class="finance-shell">
+          <div class="finance-head"><div><strong>Agentopia Financial Network</strong><span>banks · payments · payroll · insurance · merchant settlement · municipal funds · exchange · fraud controls</span></div><span id="financeUpdated" class="muted">Waiting...</span></div>
+          <div id="financeStats" class="finance-stats"></div>
+          <div class="finance-grid">
+            <section><h3>Financial institutions</h3><div id="financeInstitutions"></div></section>
+            <section><h3>Live money movement</h3><div id="financeLedger"></div></section>
+            <section><h3>Fraud / integrity alerts</h3><div id="financeAlerts"></div></section>
+            <section><h3>Largest accounts</h3><div id="financeAccounts"></div></section>
+            <section><h3>Agentopia Exchange</h3><div id="financeMarkets"></div></section>
+          </div>
+          <div class="finance-safety"><strong>Simulation boundary:</strong> financial crime is abstract and fictional. The ledger shows simulated outcomes and evidence—not real-world attack procedures.</div>
+        </div>
+      </section>
+
+
+      <section id="careerView" class="view-panel">
+        <div class="career-shell">
+          <div class="career-head"><div><strong>Agentopia Career Economy</strong><span>200 professions - qualifications - hiring - promotion - retraining - entrepreneurship - retirement</span></div><span id="careerUpdated" class="muted">Waiting...</span></div>
+          <div id="careerStats" class="career-stats"></div>
+          <div class="career-grid">
+            <section><h3>Highest earners</h3><div id="careerTopEarners"></div></section>
+            <section><h3>Recent career moves</h3><div id="careerEvents"></div></section>
+            <section><h3>Sector distribution</h3><div id="careerSectors"></div></section>
+            <section><h3>Businesses</h3><div id="careerBusinesses"></div></section>
+            <section><h3>Open positions</h3><div id="careerVacancies"></div></section>
+            <section class="career-catalog-section"><h3>200-profession catalog</h3><div id="careerCatalog"></div></section>
+          </div>
+          <div class="career-policy"><strong>Career rule:</strong> current citizens keep their existing jobs on installation. Future changes use education, experience, skills, personality, performance, aspirations and available openings. Protected traits are never eligibility criteria. Income ranges are Agentopia-normalized simulation values, not real-world salary quotes.</div>
+        </div>
+      </section>
+      <section id="economyView" class="view-panel">
+        <div class="economy-shell">
+          <div class="economy-head"><div><strong>Agentopia Detroit Human Economy</strong><span>households · housing · cost of living · consumer spending · taxes · inequality · safety net</span></div><span id="economyUpdated" class="muted">Waiting...</span></div>
+          <div id="economyStats" class="economy-stats"></div>
+          <div class="economy-grid">
+            <section><h3>Household economic classes</h3><div id="economyClasses"></div></section>
+            <section><h3>Neighborhood housing</h3><div id="economyNeighborhoods"></div></section>
+            <section><h3>Weekly money outflow</h3><div id="economySpending"></div></section>
+            <section><h3>Households under pressure</h3><div id="economyHardship"></div></section>
+            <section><h3>Recent Human Economy events</h3><div id="economyEvents"></div></section>
+            <section><h3>Price index / inflation</h3><div id="economyPrices"></div></section>
+          </div>
+          <div class="economy-policy"><strong>2045 simulation policy:</strong> tax and cost parameters are fictional Agentopia modeling inputs, not predictions of future Detroit, Michigan or U.S. law. Existing citizen balances are preserved on install; weekly costs begin at the next natural simulation week.</div>
+        </div>
+      </section>
+      <section id="businessView" class="view-panel">
+        <div class="business-shell">
+          <div class="business-head"><div><strong>Agentopia Detroit Business Economy</strong><span>firms · customers · payroll · operating costs · credit · tax · hiring · layoffs · bankruptcy</span></div><span id="businessUpdated" class="muted">Waiting...</span></div>
+          <div id="businessStats" class="business-stats"></div>
+          <div class="business-grid">
+            <section><h3>Largest businesses</h3><div id="businessLargest"></div></section>
+            <section><h3>Sector economy</h3><div id="businessSectors"></div></section>
+            <section><h3>Hiring demand</h3><div id="businessOpenings"></div></section>
+            <section><h3>Economic events</h3><div id="businessEvents"></div></section>
+          </div>
+          <div class="business-policy"><strong>Closed-loop economy:</strong> Human Economy spending becomes business revenue. Employers replenish payroll clearing from finite cash, pay operating expenses, service debt and pay modeled business taxes. Persistent distress can cause layoffs, restructuring or bankruptcy. Policy values are fictional 2045 simulation parameters.</div>
+        </div>
+      </section>
+      <section id="educationView" class="view-panel">
+        <div class="education-shell">
+          <div class="education-head"><div><strong>Agentopia Detroit Education & Skills Economy</strong><span>K-12 · trades · apprenticeships · college · graduate study · credentials · skills · tuition · student debt</span></div><span id="educationUpdated" class="muted">Waiting...</span></div>
+          <div id="educationStats" class="education-stats"></div>
+          <div class="education-grid">
+            <section><h3>Education institutions</h3><div id="educationInstitutions"></div></section>
+            <section><h3>Learning pathways</h3><div id="educationPathways"></div></section>
+            <section><h3>Skill development</h3><div id="educationSkills"></div></section>
+            <section><h3>Student debt</h3><div id="educationDebt"></div></section>
+            <section><h3>Recent education events</h3><div id="educationEvents"></div></section>
+            <section><h3>Program catalog</h3><div id="educationPrograms"></div></section>
+          </div>
+          <div class="education-policy"><strong>Human-capital rule:</strong> existing education is grandfathered. New credentials require time and progression. Apprenticeships and trades are first-class career paths. Skills influence future job matching. Protected traits never determine access. Public K-12 is city-funded; postsecondary tuition can use scholarships, cash or persistent student loans.</div>
+        </div>
+      </section>
+      <section id="healthcareView" class="view-panel">
+        <div class="health-shell">
+          <div class="health-head"><div><strong>Agentopia Detroit Health & Healthcare Economy</strong><span>physical health · mental wellbeing · insurance · providers · claims · medical payment plans · capacity</span></div><span id="healthUpdated" class="muted">Waiting...</span></div>
+          <div id="healthStats" class="health-stats"></div>
+          <div class="health-grid">
+            <section><h3>Healthcare providers</h3><div id="healthProviders"></div></section>
+            <section><h3>Population health by economic class</h3><div id="healthClasses"></div></section>
+            <section><h3>Highest current health burden</h3><div id="healthBurden"></div></section>
+            <section><h3>Recent health & care events</h3><div id="healthEvents"></div></section>
+          </div>
+          <div class="health-policy"><strong>Health-model rule:</strong> this is synthetic Agentopia simulation, not medical advice or diagnosis. Protected traits never determine care or insurance. Baseline premiums remain in Human Economy; event-based claims and patient responsibility use the Financial Network. Health may affect choices and work pacing, but it never automatically disqualifies a citizen from a career.</div>
+        </div>
+      </section>
+</main>
+
+  <section id="interiorOverlay" class="interior-overlay" aria-hidden="true">
+    <div class="interior-shell" role="dialog" aria-modal="true" aria-labelledby="interiorTitle">
+      <header class="interior-header">
+        <div>
+          <span id="interiorType" class="interior-type">BUILDING</span>
+          <h2 id="interiorTitle">Interior</h2>
+          <p id="interiorSubtitle">Live room view</p>
+        </div>
+        <button id="closeInterior" class="interior-close" type="button" aria-label="Close interior view">×</button>
+      </header>
+      <div class="interior-content">
+        <div>
+          <div id="interiorStage" class="interior-stage" aria-label="Building interior"></div>
+          <div id="interiorObjects" class="interior-objects"></div>
+        </div>
+        <aside class="interior-sidebar">
+          <div class="interior-section-title"><span>Inside now</span><strong id="interiorCount">0</strong></div>
+          <div id="interiorRoster" class="interior-roster"></div>
+          <div class="interior-section-title"><span>Recent messages among current occupants</span></div>
+          <div id="interiorMessages" class="interior-messages"></div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span id="connectionState" class="status-dot">Connecting…</span>
+    <span>Persistent Detroit • llama.cpp citizen pool • resumes from checkpoint</span>
+  <span id="agentopiaReleaseVersion" data-agentopia-version="platform">Agentopia Detroit v1.7.4.5.1 &middot; Mobility & Time</span></footer>
+
+  <script src="/app.js"></script>
+  <div id="versionBadge" class="version-badge">Agentopia Detroit v1.7.4.5.1 - PERSISTENT - llama.cpp - DIGITAL TWIN - COGNITIVE SOCIETY - HUMAN LIFECYCLE</div>
+</body>
+</html>

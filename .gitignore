@@ -1,19 +1,48 @@
-# Secrets
-gemini_key.json
-
-# Local IDE / tool settings
-.claude/settings.local.json
-*.key
-*.pem
-
 # Python
-__pycache__/
-*.py[cod]
-*.egg-info/
 .venv/
 venv/
-dist/
-build/
+__pycache__/
+*.py[cod]
 
-# OS
+# Credentials / local configuration
+.env
+.env.*
+!.env.example
+config.json
+config.json.backup*
+*credentials*.json
+*service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Agentopia runtime state
+.detroit-world.pid
+logs/
+backups/
+runtime/
+llm_cache/
+.cache/
+generations/
+
+# Private / persistent worlds
+data/detroit_persistent/
+data/detroit_*/
+data/apartment_*/
+
+# Local model weights
+models/
+*.gguf
+*.safetensors
+
+# Development backups
+*backup*/
+*.backup*
+*.pre-*
+detroit-conversion-backup*/
+
+# OS / IDE
 .DS_Store
+.vscode/
+.idea/

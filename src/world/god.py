@@ -571,8 +571,6 @@ def evaluate_solo_activity(
         if delta_money > 0:
             delta_money = min(limits["money"]["max"], delta_money)
         elif delta_money < 0:
-            from src.utils import get_logger
-
             ERROR_LOGGER = get_logger("error")
             ERROR_LOGGER.warning(
                 f"Non-consumption event has negative delta_money: {delta_money}, forcing to 0"
@@ -1154,21 +1152,135 @@ def generate_public_events(
             )
         return []
 
-    # Convert to PublicEvent objects
-    public_events = []
-    for i, evt in enumerate(events_data):
-        event_id = f"public-{year}-W{week:02d}-{i + 1}"
-        public_event = PublicEvent(
-            event_id=event_id,
-            event_name=evt["event_name"],
-            start_year=year,
-            start_week=week,
-            start_day=evt["start_day"],
-            repeat_weeks=evt["repeat_weeks"],
-            description=evt["description"],
-            eligible_participants=evt["eligible_participants"],
+    # AGENTOPIA_V17451_HF1_PUBLIC_EVENT_NORMALIZER
+    # Model/post-processing output is not guaranteed to remain a bare
+    # list[dict]. Normalize envelopes / JSON strings and fail forward
+    # rather than allowing one malformed public event to kill the world.
+    def _public_event_warn(message):
+        if verify_logger:
+            try:
+                verify_logger.warning(
+                    f"[VERIFY-PUBLIC][NORMALIZE] {current_time}: {message}"
+                )
+            except Exception:
+                pass
+
+    raw_events = events_data
+
+    # Unwrap up to a few common model/parser representations.
+    for _ in range(4):
+        if isinstance(raw_events, str):
+            try:
+                raw_events = json.loads(raw_events)
+                continue
+            except Exception as exc:
+                _public_event_warn(
+                    f"unable to decode event container string: {type(exc).__name__}"
+                )
+                raw_events = []
+                break
+
+        if isinstance(raw_events, dict):
+            required = {
+                "event_name",
+                "start_day",
+                "repeat_weeks",
+                "description",
+                "eligible_participants",
+            }
+
+            # A single event dictionary.
+            if required.issubset(raw_events.keys()):
+                raw_events = [raw_events]
+                break
+
+            # Common response envelopes.
+            unwrapped = False
+            for key in ("events", "public_events", "items", "data", "results"):
+                if key in raw_events:
+                    raw_events = raw_events[key]
+                    unwrapped = True
+                    break
+
+            if unwrapped:
+                continue
+
+            # Some models return {"1": {...}, "2": {...}}.
+            vals = list(raw_events.values())
+            if vals and all(isinstance(v, dict) for v in vals):
+                raw_events = vals
+                break
+
+            _public_event_warn(
+                f"unsupported event mapping keys={list(raw_events.keys())[:8]}"
+            )
+            raw_events = []
+            break
+
+        break
+
+    if not isinstance(raw_events, (list, tuple)):
+        _public_event_warn(
+            f"unsupported event container type={type(raw_events).__name__}"
         )
-        public_events.append(public_event)
+        raw_events = []
+
+    public_events = []
+    required_fields = (
+        "event_name",
+        "start_day",
+        "repeat_weeks",
+        "description",
+        "eligible_participants",
+    )
+
+    for raw_evt in raw_events:
+        evt = raw_evt
+
+        if isinstance(evt, str):
+            try:
+                evt = json.loads(evt)
+            except Exception as exc:
+                _public_event_warn(
+                    f"skipping undecodable event string: {type(exc).__name__}"
+                )
+                continue
+
+        if not isinstance(evt, dict):
+            _public_event_warn(
+                f"skipping event type={type(evt).__name__}"
+            )
+            continue
+
+        missing = [k for k in required_fields if k not in evt]
+        if missing:
+            _public_event_warn(
+                f"skipping malformed event missing={','.join(missing)}"
+            )
+            continue
+
+        try:
+            i = len(public_events)
+            event_id = f"public-{year}-W{week:02d}-{i + 1}"
+
+            public_event = PublicEvent(
+                event_id=event_id,
+                event_name=evt["event_name"],
+                start_year=year,
+                start_week=week,
+                start_day=evt["start_day"],
+                repeat_weeks=evt["repeat_weeks"],
+                description=evt["description"],
+                eligible_participants=evt["eligible_participants"],
+            )
+            public_events.append(public_event)
+
+        except Exception as exc:
+            _public_event_warn(
+                f"skipping invalid event during construction: "
+                f"{type(exc).__name__}: {exc}"
+            )
+            continue
 
     return public_events
 
