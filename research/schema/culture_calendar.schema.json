@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Agentopia Culture/Community Calendar Pack",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "calendar_id",
+    "community_name",
+    "calendar_type",
+    "language",
+    "provenance",
+    "holidays"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "calendar_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{1,79}$"
+    },
+    "community_name": {
+      "type": "string",
+      "minLength": 2
+    },
+    "calendar_type": {
+      "enum": [
+        "public_civic",
+        "community",
+        "religious",
+        "regional",
+        "professional",
+        "seasonal"
+      ]
+    },
+    "region": {
+      "type": "string"
+    },
+    "language": {
+      "type": "object",
+      "required": [
+        "bcp47",
+        "name"
+      ],
+      "properties": {
+        "bcp47": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "basis",
+        "notes"
+      ],
+      "properties": {
+        "basis": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "lived_experience",
+              "professional_experience",
+              "community_review",
+              "fluent_language_review",
+              "authoritative_sources"
+            ]
+          }
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "holidays": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "native_name",
+          "rule"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "native_name": {
+            "type": "string"
+          },
+          "english_name": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "observance_type": {
+            "type": "string"
+          },
+          "business_effect": {
+            "type": "string"
+          },
+          "community_effect": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
