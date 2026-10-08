@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "world_id": "detroit",
+  "world_name": "Agentopia Detroit",
+  "maintainer": {
+    "github": "tbates03"
+  },
+  "repository": "https://github.com/tbates03/Agentopia-Detroit",
+  "generated_at": "2026-10-07T23:29:00-04:00",
+  "simulated_context": {
+    "regions": [
+      "Detroit, Michigan, United States (fictional 2045 simulation)"
+    ],
+    "languages": [
+      {
+        "bcp47": "en-US",
+        "name": "English (United States)"
+      }
+    ]
+  },
+  "progress": {
+    "weeks_completed": 4,
+    "checkpoint_year": 2045,
+    "checkpoint_week": 4
+  },
+  "population": {
+    "total": 202,
+    "active": 64
+  },
+  "hardware": {
+    "profile": "performance",
+    "platform": "darwin",
+    "logical_cpus": 16,
+    "memory_gb": 128
+  },
+  "right_sizing": {
+    "local_inference": true,
+    "model_tiers": [
+      "350M",
+      "1.2B",
+      "2.6B"
+    ],
+    "requests_by_tier": {
+      "350M": 0,
+      "1.2B": 0,
+      "2.6B": 0
+    },
+    "success_percent": null,
+    "avg_latency_ms": null
+  },
+  "research_packs": [],
+  "consent": {
+    "public_research_evaluation": true,
+    "model_training_finetuning": false
+  }
+}
