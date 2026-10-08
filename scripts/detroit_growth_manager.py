@@ -219,6 +219,48 @@ def build_profile(person: dict[str, Any], year: int) -> dict[str, Any]:
     return profile
 
 
+def ensure_profile_years(year: int | None = None) -> int:
+    """Carry persistent persona profiles forward for citizens inactive at year-end.
+
+    Active citizens receive LLM-evolved yearly profiles from Agentopia core.
+    Background personas do not, so without this carry-forward they could never
+    safely re-enter the active cohort in a later year.
+    """
+    year = int(year or current_year())
+    if not PERSONA.exists():
+        return 0
+    copied = 0
+    for pdir in sorted((p for p in PERSONA.iterdir() if p.is_dir()), key=lambda p: p.name.casefold()):
+        profdir = pdir / "profile"
+        target = profdir / f"year={year}.json"
+        if target.exists():
+            continue
+        files = sorted(profdir.glob("year=*.json")) if profdir.exists() else []
+        candidates: list[tuple[int, Path]] = []
+        for f in files:
+            try:
+                y = int(f.stem.split("=", 1)[1])
+            except Exception:
+                continue
+            if y <= year:
+                candidates.append((y, f))
+        if not candidates:
+            continue
+        _, source = max(candidates, key=lambda x: x[0])
+        profile = read_json(source, {})
+        if not isinstance(profile, dict) or not profile:
+            continue
+        profile = dict(profile)
+        profile["profile_carry_forward"] = {
+            "source_year": int(source.stem.split("=", 1)[1]),
+            "target_year": year,
+            "reason": "background_persona_continuity",
+        }
+        write_json(target, profile)
+        copied += 1
+    return copied
+
+
 def promote_background_people(year: int | None = None) -> list[str]:
     year = int(year or current_year())
     growth = growth_config()
@@ -316,12 +358,14 @@ def prepare_for_boot() -> dict[str, Any]:
         pass
 
     year = current_year()
+    carried_forward = ensure_profile_years(year)
     promoted = promote_background_people(year)
     total_personas = len([p for p in PERSONA.iterdir() if p.is_dir()]) if PERSONA.exists() else 0
     target = recommend_active_target(total_personas)
     result = {
         "version": VERSION,
         "world_year": year,
+        "profiles_carried_forward": carried_forward,
         "promoted": promoted,
         "persona_population": total_personas,
         "recommended_active_ai": target,
