@@ -65,6 +65,8 @@ growth_cfg.setdefault("active_ai_min", 64)
 growth_cfg.setdefault("active_ai_max", 128)
 growth_cfg.setdefault("global_prompt_agent_limit", 48)
 growth_cfg.setdefault("encounter_prompt_agents_per_day", 48)
+growth_cfg.setdefault("public_location_people_per_location", 3)
+growth_cfg.setdefault("public_location_max", 120)
 write(cfg_path, cfg)
 
 # Refresh persistent background society and promote a bounded number of adults
