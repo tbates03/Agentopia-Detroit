@@ -554,7 +554,8 @@ def write_summary(people: dict[str, Any], current_year: int, interventions: list
         "principles":{
             "children_use_background_simulation":True,"religion_never_inferred_from_name_or_ethnicity":True,
             "radicalization_independent_of_religion":True,"belief_switching_supported":True,
-            "family_graph_persistent":True,"inheritance_ledger_supported":True,\n            "annual_migration_supported":True,"background_to_persona_promotion_supported":True,
+            "family_graph_persistent":True,"inheritance_ledger_supported":True,
+            "annual_migration_supported":True,"background_to_persona_promotion_supported":True,
         },
     }
     write_json(HUM/"summary.json",summary)
