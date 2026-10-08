@@ -230,6 +230,29 @@ It can display simulation phase, citizens, conversations, model pools, factions,
 
 The performance/telemetry direction for the project is to make model utilization visible alongside the society so the user can see both **what the agents are doing** and **what the computer is spending to do it**.
 
+### Live Right-Sizing Performance
+
+The Live World dashboard now includes a **Right-Sizing Performance** panel showing actual local telemetry:
+
+- host CPU utilization
+- system/unified memory use
+- live busy/total slots for the 350M, 1.2B and 2.6B pools
+- uncached inference request counts
+- average end-to-end inference latency
+- success rate
+- per-tier workload share
+- recent requests per minute
+
+The panel is driven by privacy-safe telemetry. It records model tier, latency, success and timing only; it does **not** record prompts, responses, credentials or citizen conversation text.
+
+The City Pulse telemetry service is started automatically by the persistent service launcher. For a manual development run, start it separately:
+
+```bash
+python scripts/agentopia_city_pulse.py
+```
+
+Then open the Live World dashboard at `http://127.0.0.1:8766`.
+
 ---
 
 ## Installation
