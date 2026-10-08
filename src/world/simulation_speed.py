@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -30,18 +31,43 @@ def read_speed() -> dict[str, Any]:
 
 def apply_speed_profile(world: Any) -> dict[str, Any]:
     state = read_speed()
-    base = int(getattr(world, "_detroit_base_concurrency", 0) or getattr(world, "max_concurrency", 2) or 2)
+    base = int(
+        getattr(world, "_detroit_base_concurrency", 0)
+        or getattr(world, "max_concurrency", 2)
+        or 2
+    )
     if not hasattr(world, "_detroit_base_concurrency"):
         world._detroit_base_concurrency = base
-    if state["mode"] == "slow":
+
+    # AGENTOPIA_ADAPTIVE_CONCURRENCY_V180
+    # Original Detroit speed control hard-capped every fast mode at 12 workers,
+    # so x1000 could not use more local inference capacity than Normal. Keep
+    # Normal conservative while letting faster modes scale to a configurable cap.
+    try:
+        requested_cap = int(os.environ.get("AGENTOPIA_CONCURRENCY_CAP", "32"))
+    except Exception:
+        requested_cap = 32
+    cap = max(1, min(base, requested_cap))
+
+    mode = state["mode"]
+    if mode == "slow":
         target = 1
-    else:
-        target = min(12, max(1, int(round(base * float(state["concurrency_factor"])))))
-    world.max_concurrency = target
+    elif mode == "normal":
+        target = min(cap, 12)
+    elif mode == "x2":
+        target = min(cap, 16)
+    elif mode == "x5":
+        target = min(cap, 24)
+    else:  # x10 and x1000
+        target = cap
+
+    world.max_concurrency = max(1, target)
     try:
         from src.config import get_config
-        get_config()["max_concurrency"] = target
+        get_config()["max_concurrency"] = world.max_concurrency
     except Exception:
         pass
-    state["effective_concurrency"] = target
+    state["configured_concurrency"] = base
+    state["concurrency_cap"] = cap
+    state["effective_concurrency"] = world.max_concurrency
     return state
