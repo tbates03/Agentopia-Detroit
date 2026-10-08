@@ -148,7 +148,9 @@ def observed_clock() -> dict[str, Any]:
     if root.exists():
         dirs = [p for p in root.iterdir() if p.is_dir() or p.is_symlink()]
         for p in dirs[:256]:
-            for fname in ("state.jsonl", "activity.jsonl", "schedule.jsonl"):
+            # Schedules can contain future activity_time values; never use them
+            # to determine the live simulation clock. State/activity are observed truth.
+            for fname in ("state.jsonl", "activity.jsonl"):
                 candidates.extend(tail_times(p / fname))
     if candidates:
         raw = max(candidates, key=clock_key)
