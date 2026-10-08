@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
+import math
 
 from src.config import get_config
 from src.utils import get_logger
@@ -73,6 +74,15 @@ class LocationStore:
     ) -> None:
         """Ensure locations.json exists and every persona has a private home."""
         self._load_or_create(force=force, agents_summary=agents_summary)
+
+        # AGENTOPIA_PUBLIC_MAP_GROWTH_V180
+        # Shared civic space grows gradually with the bounded active cohort.
+        # This is not one location per citizen; it preserves reusable public
+        # infrastructure while preventing a permanent 30-location city.
+        self._ensure_public_capacity(
+            active_personas=len(persona_names),
+            agents_summary=agents_summary,
+        )
 
         # Collect personas needing home generation
         to_generate = []
@@ -156,6 +166,61 @@ class LocationStore:
         return "\n".join(lines)
 
     # ---------- Internals ----------
+
+    def _ensure_public_capacity(
+        self, *, active_personas: int, agents_summary: str = ""
+    ) -> None:
+        cfg = get_config()
+        world_cfg = cfg["world"]
+        loc_cfg = world_cfg.get("location", {}) or {}
+        growth_cfg = world_cfg.get("growth", {}) or {}
+
+        base = max(1, int(loc_cfg.get("n_locations", 30)))
+        people_per_location = max(
+            1, int(growth_cfg.get("public_location_people_per_location", 3))
+        )
+        max_public = max(
+            base, int(growth_cfg.get("public_location_max", 120))
+        )
+        target = min(
+            max_public,
+            max(base, int(math.ceil(max(1, active_personas) / people_per_location))),
+        )
+        missing = max(0, target - len(self.public))
+        if missing <= 0:
+            return
+
+        from src.world.mapgen import generate_locations_via_llm
+
+        self.logger.info(
+            "[locations] expanding public map: current=%d target=%d add=%d",
+            len(self.public),
+            target,
+            missing,
+        )
+        generated = generate_locations_via_llm(
+            world_cfg,
+            {
+                "n_locations": missing,
+                "detail_level": str(loc_cfg.get("detail_level", "medium")).lower(),
+            },
+            agents_summary,
+            avoid_names=list(self.public.keys()),
+        )
+        added = 0
+        for key, value in sorted((generated.get("public") or {}).items()):
+            if key in self.public:
+                continue
+            self.public[key] = value
+            added += 1
+
+        if added:
+            self._save()
+        self.logger.info(
+            "[locations] public map expansion complete: added=%d total=%d",
+            added,
+            len(self.public),
+        )
 
     def _home_key(self, name: str) -> str:
         # Always use English 'home' prefix for consistency
