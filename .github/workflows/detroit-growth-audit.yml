@@ -16,7 +16,12 @@ on:
       - "scripts/detroit_mobility_time.py"
       - "scripts/detroit_world_context.py"
       - "scripts/audit_detroit_growth.py"
+      - "scripts/detroit_state_store.py"
+      - "scripts/detroit_relevance_activation.py"
+      - "scripts/detroit_civilization_invariants.py"
+      - "scripts/stress_detroit_civilization.py"
       - "docs/DETROIT_GROWTH_AUDIT.md"
+      - "docs/DETROIT_CIVILIZATION_SCALE_RC2.md"
       - ".github/workflows/detroit-growth-audit.yml"
   push:
     branches: [main]
@@ -34,7 +39,12 @@ on:
       - "scripts/detroit_mobility_time.py"
       - "scripts/detroit_world_context.py"
       - "scripts/audit_detroit_growth.py"
+      - "scripts/detroit_state_store.py"
+      - "scripts/detroit_relevance_activation.py"
+      - "scripts/detroit_civilization_invariants.py"
+      - "scripts/stress_detroit_civilization.py"
       - "docs/DETROIT_GROWTH_AUDIT.md"
+      - "docs/DETROIT_CIVILIZATION_SCALE_RC2.md"
       - ".github/workflows/detroit-growth-audit.yml"
 
 permissions:
@@ -52,14 +62,29 @@ jobs:
 
       - name: Compile growth-critical Python
         run: |
-          python -m py_compile             src/world/world.py             src/world/god.py             src/world/simulation_speed.py             src/world/locations.py             src/world/mapgen.py             scripts/run_detroit_persistent.py             scripts/detroit_growth_manager.py             scripts/detroit_human_lifecycle.py             scripts/detroit_career_economy.py             scripts/detroit_mobility_time.py             scripts/detroit_world_context.py             scripts/audit_detroit_growth.py             scripts/detroit_state_store.py             scripts/detroit_relevance_activation.py             scripts/detroit_civilization_invariants.py             scripts/stress_detroit_civilization.py
+          python -m py_compile \
+            src/world/world.py \
+            src/world/god.py \
+            src/world/simulation_speed.py \
+            src/world/locations.py \
+            src/world/mapgen.py \
+            scripts/run_detroit_persistent.py \
+            scripts/detroit_growth_manager.py \
+            scripts/detroit_human_lifecycle.py \
+            scripts/detroit_career_economy.py \
+            scripts/detroit_mobility_time.py \
+            scripts/detroit_world_context.py \
+            scripts/audit_detroit_growth.py \
+            scripts/detroit_state_store.py \
+            scripts/detroit_relevance_activation.py \
+            scripts/detroit_civilization_invariants.py \
+            scripts/stress_detroit_civilization.py
 
       - name: Shell syntax
         run: bash -n scripts/start_detroit_persistent_service.sh
 
       - name: Growth architecture regression audit
         run: python scripts/audit_detroit_growth.py --strict
-
 
       - name: RC2 civilization-scale stress
         run: python scripts/stress_detroit_civilization.py --citizens 100000 --personas 1000 --events 10000 --max-seconds 30
