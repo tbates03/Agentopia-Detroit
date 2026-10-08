@@ -1,5 +1,23 @@
 # Weather, Seasons and Cultural Calendar Research Roadmap
 
+## Implementation status
+
+**World Context Engine v1.0.0 is implemented.**
+
+It now:
+
+- generates deterministic synthetic daily weather for the simulation week
+- maps seasons from the configured climate/hemisphere instead of assuming Detroit for every fork
+- exposes transport, outdoor-work, energy and health-stress context
+- writes live state under `data/<world>/world_context/`
+- injects current weather/season/calendar context into citizen prompts
+- provides a sidecar daemon so the webpage can update without restarting the main engine
+- lets Mobility & Time consume the same World Context weather truth
+- loads explicit provenance-backed community calendar packs
+- enforces a maximum of 50 observances per calendar pack
+- refuses to infer a citizen's cultural/religious calendar membership from identity proxies
+
+
 Agentopia World League expands the right-sizing research surface beyond jobs and dialogue into environmental and calendar context.
 
 ## Weather
