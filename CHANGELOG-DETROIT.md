@@ -65,3 +65,18 @@ Current alpha limitations include:
 - added automatic City Pulse telemetry startup and watchdog recovery
 
 The telemetry record intentionally excludes prompts, responses, credentials and citizen conversation content.
+
+
+### Agentopia World League / Kai Transparent AI community research
+
+- launched LEADERBOARD.md for participating persistent worlds
+- leaderboard progress is based on committed simulation weeks
+- display scale is designed to expand from weeks to months, years and decades as participation grows
+- added privacy-safe World Beacon export tooling
+- added generated leaderboard tooling
+- added GitHub validation workflow for community submissions
+- added multilingual Research Pack schema for jobs, trades, business workflows and other task families
+- made native-language task text the primary research artifact; English summaries are optional
+- added contributor provenance requirements for cultural/regional context
+- separated public research/evaluation consent from model training/fine-tuning consent
+- documented Agentopia World League as a transparent community-learning layer for Kai — Transparent AI
