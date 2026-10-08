@@ -26,13 +26,13 @@ jobs:
         with:
           python-version: "3.12"
       - name: Validate Python
-        run: python -m py_compile scripts/build_leaderboard.py scripts/export_world_beacon.py
+        run: python -m py_compile scripts/build_leaderboard.py scripts/export_world_beacon.py scripts/detroit_world_context.py scripts/detroit_world_context_daemon.py
       - name: Validate submission JSON
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          for path in list(Path("research/submissions").glob("*.json")) + list(Path("research/packs").glob("*.json")):
+          for path in list(Path("research/submissions").glob("*.json")) + list(Path("research/packs").glob("*.json")) + list(Path("research/culture_calendars").glob("*.json")) + list(Path("research/schema").glob("*.json")):
               json.loads(path.read_text(encoding="utf-8"))
               print("OK", path)
           PY
