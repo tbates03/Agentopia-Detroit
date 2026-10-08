@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "world_id": "detroit",
+  "world_name": "Agentopia Detroit",
+  "climate_profile": "detroit-temperate-north",
+  "calendar_packs": [
+    "us-public-civic"
+  ],
+  "notes": [
+    "Synthetic weather is simulation context, not a forecast.",
+    "Community/cultural calendars must be explicitly enabled; TAi does not infer culture from citizen identity."
+  ]
+}
