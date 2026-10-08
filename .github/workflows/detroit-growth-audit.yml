@@ -12,6 +12,11 @@ on:
       - "scripts/start_detroit_persistent_service.sh"
       - "scripts/detroit_growth_manager.py"
       - "scripts/detroit_human_lifecycle.py"
+      - "AGENTOPIA-FULL-SYSTEM-CHECK.command"
+      - "APPLY-AGENTOPIA-DETROIT-RC2-HARDENING.command"
+      - "scripts/apply_rc2_post_reboot_hardening.py"
+      - "live_world/server.py"
+      - "scripts/detroit_humanity_daemon.py"
       - "scripts/detroit_career_economy.py"
       - "scripts/detroit_mobility_time.py"
       - "scripts/detroit_world_context.py"
@@ -77,6 +82,7 @@ jobs:
             scripts/run_detroit_persistent.py \
             scripts/detroit_growth_manager.py \
             scripts/detroit_human_lifecycle.py \
+            scripts/detroit_humanity_daemon.py \
             scripts/detroit_career_economy.py \
             scripts/detroit_mobility_time.py \
             scripts/detroit_world_context.py \
@@ -85,7 +91,9 @@ jobs:
             scripts/detroit_relevance_activation.py \
             scripts/detroit_civilization_invariants.py \
             scripts/stress_detroit_civilization.py \
-            scripts/migrate_detroit_rc2.py
+            scripts/migrate_detroit_rc2.py \
+            scripts/apply_rc2_post_reboot_hardening.py \
+            live_world/server.py
 
       - name: Shell syntax
         run: |
@@ -93,6 +101,8 @@ jobs:
           bash -n MIGRATE-AGENTOPIA-DETROIT-RC2.command
           bash -n scripts/repair_detroit_launchd.sh
           bash -n REPAIR-AGENTOPIA-DETROIT-LAUNCHD.command
+          bash -n APPLY-AGENTOPIA-DETROIT-RC2-HARDENING.command
+          bash -n AGENTOPIA-FULL-SYSTEM-CHECK.command
 
       - name: Growth architecture regression audit
         run: python scripts/audit_detroit_growth.py --strict
