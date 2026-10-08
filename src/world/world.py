@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -97,6 +99,52 @@ class World:
     def _persona_root(self) -> Path:
         return Path("data") / self.data_dir / "persona"
 
+    def _bounded_agents_for_context(
+        self,
+        agents: List[RoleAgent],
+        *,
+        purpose: str,
+        limit: int | None = None,
+    ) -> List[RoleAgent]:
+        """Return a deterministic rotating slice for global God-model prompts.
+
+        The simulated population may grow without forcing every citizen profile
+        into every global prompt. TGOT/Morbeious remain visible when present;
+        the remaining slots rotate by simulated week and purpose.
+        """
+        growth = self.config.get("growth", {}) if isinstance(self.config, dict) else {}
+        if not isinstance(growth, dict):
+            growth = {}
+        if limit is None:
+            raw = os.environ.get(
+                "AGENTOPIA_GLOBAL_CONTEXT_AGENT_LIMIT",
+                str(growth.get("global_prompt_agent_limit", 48)),
+            )
+            try:
+                limit = int(raw)
+            except Exception:
+                limit = 48
+        limit = max(2, int(limit))
+        if len(agents) <= limit:
+            return list(agents)
+
+        by_name = {a.name: a for a in agents}
+        selected: List[RoleAgent] = []
+        for name in ("TGOT", "Morbeious"):
+            if name in by_name and len(selected) < limit:
+                selected.append(by_name[name])
+
+        t = self.clock.get_time()
+        selected_names = {a.name for a in selected}
+        rest = [a for a in agents if a.name not in selected_names]
+        rest.sort(
+            key=lambda a: hashlib.sha256(
+                f"{purpose}|Y{t.year}|W{t.week}|{a.name}".encode("utf-8")
+            ).hexdigest()
+        )
+        selected.extend(rest[: max(0, limit - len(selected))])
+        return selected
+
     def _init_agents_from_data(
         self, *, max_agents: int | None = None
     ) -> List[RoleAgent]:
@@ -104,10 +152,14 @@ class World:
         if not root.exists():
             raise FileNotFoundError(f"persona root not found: {root}")
         # Every persona should have a profile; for simplicity we no longer filter here. If one is missing, an error will be raised later at read time to surface the problem early.
+        include_background = bool(
+            getattr(self, "_include_background_personas", False)
+        )
         all_dirs = [
             p
             for p in sorted(root.iterdir())
-            if p.is_dir() and not (p / "_background.json").exists()
+            if p.is_dir()
+            and (include_background or not (p / "_background.json").exists())
         ]
         names = (
             [p.name for p in all_dirs[:max_agents]]
@@ -137,10 +189,20 @@ class World:
             for n in names
         ]
 
-        # Build agents summary for location generation
-        agents_summary = "\n\n".join(
-            f"## {a.name}\n{a.dm.get_brief_intro()}" for a in agents
+        # Build a bounded representative summary for map generation. Private
+        # homes are still created for every active persona via persona_names.
+        location_context_agents = self._bounded_agents_for_context(
+            agents, purpose="location-generation"
         )
+        agents_summary = "\n\n".join(
+            f"## {a.name}\n{a.dm.get_brief_intro()}" for a in location_context_agents
+        )
+        if len(location_context_agents) < len(agents):
+            agents_summary = (
+                f"## Population context\n"
+                f"Active citizens: {len(agents)}. Representative profiles shown: "
+                f"{len(location_context_agents)}.\n\n" + agents_summary
+            )
         self.location_store.ensure(persona_names=names, agents_summary=agents_summary)
 
         # Ensure positions exist (generate via God Model if needed)
@@ -326,13 +388,21 @@ class World:
         return result
 
     def build_all_agents_summary(self) -> str:
-        """Build a summary of all agents for GuardModel context.
+        """Build bounded, rotating citizen context for global God-model tasks.
 
-        Returns:
-            A formatted string with each agent's profile summary.
+        Full population membership remains available to validation/routing code;
+        this method prevents prompt size from growing linearly without bound.
         """
-        lines = []
-        for agent in self.agents:
+        selected = self._bounded_agents_for_context(
+            self.agents, purpose="global-agent-summary"
+        )
+        lines = [
+            "## Agentopia population context",
+            f"- Active AI citizens: {len(self.agents)}",
+            f"- Representative citizen profiles in this prompt: {len(selected)}",
+            "- Omitted citizens still exist and retain persistent state.",
+        ]
+        for agent in selected:
             lines.append(f"### {agent.name}\n{agent.dm.get_brief_intro()}")
         return "\n\n".join(lines)
 
