@@ -783,7 +783,7 @@ class World:
             # 3. Public (sorted by size, small first to release slots quickly)
             if self.parallel:
                 from src.config import get_config
-                from threading import Semaphore
+                from threading import Lock, Semaphore
 
                 cfg = get_config()
                 # AGENTOPIA_ACTIVITY_EFFECTIVE_CONCURRENCY_V1745
@@ -812,17 +812,37 @@ class World:
                     f"pool={max_concurrency}"
                 )
 
-                # Semaphore controls total concurrent tasks
+                # AGENTOPIA_ACTIVITY_SLOT_DEADLOCK_FIX_V1745
+                # Semaphore controls total concurrent tasks.
+                #
+                # Slot reservations must be atomic. Acquiring N permits one-by-one
+                # without a reservation lock can deadlock when a PublicActivity
+                # asks for more permits than remain available (or when multiple
+                # multi-slot activities partially acquire the pool).
                 capacity = Semaphore(max_concurrency)
+                reservation_lock = Lock()
 
                 def run_with_slots(fn, slots: int, *args, **kwargs):
-                    """Run function while holding `slots` semaphore permits."""
-                    for _ in range(slots):
-                        capacity.acquire()
+                    """Run function while holding a safe, bounded slot reservation."""
+                    requested_slots = max(1, int(slots))
+                    held_slots = min(requested_slots, max_concurrency)
+                    if held_slots != requested_slots:
+                        self.logger.warning(
+                            "[ACTIVITY_SLOT_CLAMP] requested=%d capacity=%d held=%d",
+                            requested_slots,
+                            max_concurrency,
+                            held_slots,
+                        )
+
+                    # Reserve as one logical operation so competing multi-slot
+                    # tasks cannot each hold a partial reservation forever.
+                    with reservation_lock:
+                        for _ in range(held_slots):
+                            capacity.acquire()
                     try:
                         return fn(*args, **kwargs)
                     finally:
-                        for _ in range(slots):
+                        for _ in range(held_slots):
                             capacity.release()
 
                 # Thread pool large enough for all tasks to be submitted
@@ -843,7 +863,14 @@ class World:
                     sorted_public = sorted(public_acts, key=lambda a: len(a.agents))
                     for act in sorted_public:
                         n_participants = len(act.agents)
-                        slots = min(n_participants, public_internal_parallelism)
+                        slots = max(
+                            1,
+                            min(
+                                n_participants,
+                                public_internal_parallelism,
+                                max_concurrency,
+                            ),
+                        )
                         futures.append(
                             ex.submit(run_with_slots, act.run, slots, parallel=True)
                         )
