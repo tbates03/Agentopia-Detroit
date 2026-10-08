@@ -17,6 +17,11 @@ if ! curl -fsS --max-time 2 http://127.0.0.1:8766/api/health >/dev/null 2>&1; th
   nohup "$PY" "$APP/live_world/server.py" --agentopia-root "$APP" >> "$APP/logs/live-world-persistent.log" 2>&1 &
 fi
 
+# Right-Sizing / City Pulse telemetry service for the Live World performance panel.
+if ! curl -fsS --max-time 2 http://127.0.0.1:8767/api/health >/dev/null 2>&1; then
+  nohup "$PY" "$APP/scripts/agentopia_city_pulse.py" >> "$APP/logs/agentopia-city-pulse.log" 2>&1 &
+fi
+
 [ ! -f "$APP/scripts/backup_detroit_persistent.py" ] || "$PY" "$APP/scripts/backup_detroit_persistent.py" >> "$APP/logs/detroit-persistent-backup.log" 2>&1 || true
 
 BACKEND=""
