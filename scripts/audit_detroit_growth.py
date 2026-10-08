@@ -165,6 +165,20 @@ CHECKS = [
         "def week_dates",
         "Weather, seasons and calendar context are present for the full-year timeline.",
     ),
+    (
+        "public_map_grows",
+        "high",
+        "src/world/locations.py",
+        "AGENTOPIA_PUBLIC_MAP_GROWTH_V180",
+        "Detroit public-space capacity expands gradually with the active population.",
+    ),
+    (
+        "map_expansion_avoids_duplicates",
+        "high",
+        "src/world/mapgen.py",
+        "avoid_names",
+        "Incremental map generation is told not to reuse existing public locations.",
+    ),
 ]
 
 
