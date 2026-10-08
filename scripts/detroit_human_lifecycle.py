@@ -14,7 +14,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 WORLD = ROOT / "data" / "detroit_persistent"
 HUM = WORLD / "humanity"
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 # Pew global 2020 landscape, used only as a neutral fallback prior for fictional
 # citizens when family belief and origin-specific context are unavailable.
@@ -70,6 +70,13 @@ def write_json(path: Path, obj: Any) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
+
+
+def growth_config() -> dict[str, Any]:
+    cfg = read_json(WORLD / "config.json", {})
+    world = cfg.get("world") if isinstance(cfg, dict) else {}
+    growth = world.get("growth") if isinstance(world, dict) else {}
+    return growth if isinstance(growth, dict) else {}
 
 
 def append_event(name: str, obj: dict[str, Any]) -> None:
@@ -233,6 +240,9 @@ def seed_existing_personas(people: dict[str, Any], current_year: int) -> None:
             "children": rec.get("children", []),
             "partners": rec.get("partners", []),
             "household_id": rec.get("household_id"),
+            "founder_id": profile.get("founder_id", rec.get("founder_id")),
+            "lineage": profile.get("lineage", rec.get("lineage", {})),
+            "origin_record": profile.get("origin", rec.get("origin_record", {})),
             "updated_at": utc_now(),
         })
         if "belief" not in rec:
@@ -248,6 +258,32 @@ def unique_name(rng: random.Random, people: dict[str, Any], surname: str | None 
         name = f"{rng.choice(FIRST_NAMES)} {surname or rng.choice(SURNAMES)}"
         if name not in used: return name
     return f"Citizen {len(used)+1}"
+
+
+def founder_ids_for(person: dict[str, Any]) -> list[str]:
+    ids: list[str] = []
+    fid = person.get("founder_id")
+    if fid:
+        ids.append(str(fid))
+    lineage = person.get("lineage")
+    if isinstance(lineage, dict):
+        ids.extend(str(x) for x in lineage.get("founder_ids", []) if x)
+    return sorted(set(ids))
+
+
+def inherited_lineage(*parents: dict[str, Any]) -> dict[str, Any]:
+    founder_ids: list[str] = []
+    for parent in parents:
+        if isinstance(parent, dict):
+            founder_ids.extend(founder_ids_for(parent))
+    founder_ids = sorted(set(founder_ids))
+    if founder_ids:
+        return {
+            "type": "founder_descendant",
+            "founder_ids": founder_ids,
+            "generation": "descendant",
+        }
+    return {"type": "resident_lineage", "founder_ids": [], "generation": "descendant"}
 
 
 def create_person(people: dict[str, Any], name: str, age: int, current_year: int, *, origin: str, household: str, parents=None, partner=None, inherited_belief=None) -> str:
@@ -405,9 +441,35 @@ def process_year_transition(people: dict[str, Any], current_year: int) -> None:
                     inherited=(p.get("belief") or {}).get("affiliation")
                     child=create_person(people,name,0,year,origin="Agentopia Detroit",household=str(p.get("household_id") or q.get("household_id") or "HH-DETROIT"),parents=[pid,partner],inherited_belief=inherited)
                     people[child]["origin_type"]="founder_or_resident_lineage"
+                    people[child]["lineage"]=inherited_lineage(p,q)
                     p.setdefault("children",[]).append(child); q.setdefault("children",[]).append(child)
-                    append_event("lifecycle_events.ndjson",{"event":"birth","time":utc_now(),"world_year":year,"person_id":child,"parents":[pid,partner]})
-        write_json(HUM / "lifecycle_state.json", {"last_processed_year": year, "updated_at": utc_now()})
+                    append_event("lifecycle_events.ndjson",{"event":"birth","time":utc_now(),"world_year":year,"person_id":child,"parents":[pid,partner],"lineage":people[child]["lineage"]})
+
+        # Persistent cities need arrivals as well as births. This is deliberately
+        # small, deterministic and bounded so population can grow without exploding
+        # local inference cost. Origin never determines religion, race, ethnicity,
+        # gender, personality or skill.
+        growth=growth_config()
+        alive_count=sum(1 for x in people.values() if isinstance(x,dict) and x.get("alive",True))
+        rate=float(growth.get("annual_migration_rate",0.02))
+        minimum=max(0,int(growth.get("annual_migration_min",2)))
+        maximum=max(minimum,int(growth.get("annual_migration_max",8)))
+        arrivals=max(minimum,min(maximum,int(round(alive_count*rate))))
+        rng=stable_rng("annual_migration",year)
+        arrived=[]
+        age_pool=[18,19,21,23,25,27,30,33,36,40,45,50,56,63,70]
+        for idx in range(arrivals):
+            origin=rng.choice([x for x in ORIGINS if x!="Detroit, Michigan"])
+            age=rng.choice(age_pool)
+            surname=rng.choice(SURNAMES)
+            name=unique_name(rng,people,surname)
+            household="HH-MIG-"+hashlib.sha256(f"{year}|{idx}|{name}".encode()).hexdigest()[:10].upper()
+            newcomer=create_person(people,name,age,year,origin=origin,household=household)
+            people[newcomer]["origin_type"]="annual_migration"
+            arrived.append(newcomer)
+        if arrived:
+            append_event("lifecycle_events.ndjson",{"event":"annual_migration","time":utc_now(),"world_year":year,"people":arrived,"count":len(arrived)})
+        write_json(HUM / "lifecycle_state.json", {"last_processed_year": year, "updated_at": utc_now(), "annual_arrivals": len(arrived)})
 
 
 def update_radicalization(people: dict[str, Any], current_year: int) -> list[dict[str, Any]]:
@@ -483,7 +545,7 @@ def write_summary(people: dict[str, Any], current_year: int, interventions: list
         if not isinstance(p,dict) or not p.get("alive",True) or p.get("agentopia_persona"): continue
         if p.get("life_stage") in ("teen","young_adult","adult"):
             activation.append({"person_id":pid,"name":p.get("name"),"age":p.get("age"),"stage":p.get("life_stage"),"reason":"eligible for active-agent promotion when socially relevant"})
-    write_json(HUM/"activation_queue.json",{"updated_at":utc_now(),"candidates":activation[:100]})
+    write_json(HUM/"activation_queue.json",{"updated_at":utc_now(),"candidate_count":len(activation),"candidates":activation})
     summary={
         "version":VERSION,"updated_at":utc_now(),"world_year":current_year,
         "population":sum(counts.values()),"life_stages":dict(counts),"beliefs":dict(beliefs),
@@ -492,7 +554,7 @@ def write_summary(people: dict[str, Any], current_year: int, interventions: list
         "principles":{
             "children_use_background_simulation":True,"religion_never_inferred_from_name_or_ethnicity":True,
             "radicalization_independent_of_religion":True,"belief_switching_supported":True,
-            "family_graph_persistent":True,"inheritance_ledger_supported":True,
+            "family_graph_persistent":True,"inheritance_ledger_supported":True,\n            "annual_migration_supported":True,"background_to_persona_promotion_supported":True,
         },
     }
     write_json(HUM/"summary.json",summary)
