@@ -1,6 +1,6 @@
 # Agentopia Detroit Growth Architecture Audit
 
-**Status:** v1.8.0-RC1 architecture review  
+**Status:** v1.8.0-RC2 architecture review  
 **Baseline:** upstream `Neph0s/Agentopia`  
 **Target:** persistent Agentopia Detroit civic simulation + local-AI/right-sizing research platform
 
@@ -8,7 +8,7 @@
 
 Agentopia Detroit is no longer an apartment-scale, fixed-cohort role-play experiment. It is becoming a persistent civic simulation in which the **city population, persistent citizen population, and expensive AI-active population are intentionally different layers**.
 
-The growth audit found several inherited assumptions that were reasonable for the original Agentopia project but would eventually stop Detroit from behaving like a growing city. The v1.8.0-RC1 changes remove the hard blockers while retaining bounded controls where they protect context windows, local compute, or per-citizen state.
+The growth audit found several inherited assumptions that were reasonable for the original Agentopia project but would eventually stop Detroit from behaving like a growing city. The v1.8.0-RC1/RC2 changes remove the hard blockers while retaining bounded controls where they protect context windows, local compute, or per-citizen state.
 
 The governing rule is:
 
@@ -310,3 +310,26 @@ Those are scale transitions, not reasons to cap Detroit at its original cohort.
 Agentopia Detroit should grow like a city, not like one prompt.
 
 **State can scale broadly. Expensive cognition must remain selective, observable and right-sized.**
+
+
+## RC2 civilization-scale validation
+
+v1.8.0-RC2 adds the indexed civilization layer described in
+`docs/DETROIT_CIVILIZATION_SCALE_RC2.md`.
+
+The growth audit now contains **28 architecture checks**. On the RC2 draft pull
+request, GitHub Actions reported:
+
+- Python compilation: PASS
+- shell syntax: PASS
+- growth architecture audit: **28 passed / 0 failed**
+- 100,000 civic citizens indexed
+- 1,000 persistent personas represented
+- 10,000 append-only events inserted
+- 128 active citizens selected by relevance
+- GitHub-hosted stress elapsed time: **0.842 seconds**
+- 30-second CI performance guardrail: PASS
+
+The benchmark is a regression signal, not a hardware-independent performance
+guarantee. The private live Detroit world remains outside this migration until
+the RC2 branch is deliberately promoted.
