@@ -23,7 +23,7 @@ POLICY_PATH = ECON / 'policy.json'
 SUMMARY_PATH = ECON / 'summary.json'
 LEDGER_PATH = ECON / 'ledger.ndjson'
 EVENTS_PATH = ECON / 'events.ndjson'
-VERSION = '1.7.0'
+VERSION = '1.8.0'
 
 # Fictional 2045 Agentopia policy. Structure is Detroit/Michigan-like, but these
 # are simulation parameters, not a representation of future tax law.
@@ -191,29 +191,45 @@ def humanity_index() -> tuple[dict[str, dict[str, Any]], dict[str, list[dict[str
 
 
 def build_household_blueprint() -> dict[str, dict[str, Any]]:
-    names = persona_names()
+    """Use lifecycle household identity as the canonical household graph.
+
+    Human Economy still tracks which members have full Agentopia persona/finance
+    state, but household size, stages and family co-residence come from the full
+    living lifecycle population so children/seniors/background residents are not
+    silently omitted from household costs.
+    """
+    persona_set = set(persona_names())
     by_name, human_households = humanity_index()
-    groups: dict[str, list[str]] = defaultdict(list)
-    for name in names:
-        hp = by_name.get(name, {})
-        hid = str(hp.get('household_id') or '')
-        if not hid or hid == 'unassigned': hid = f'HH-{hash_id(name, 12)}'
-        groups[hid].append(name)
     result: dict[str, dict[str, Any]] = {}
-    for hid, members in groups.items():
-        human_members = human_households.get(hid, [])
-        stages: list[str] = []
-        if human_members:
-            stages = [str(x.get('life_stage') or 'adult') for x in human_members]
-        else:
-            for name in members:
-                age = int(by_name.get(name, {}).get('age', 35) or 35)
-                stages.append('teen' if age < 18 else ('senior' if age >= 65 else 'adult'))
+
+    # Canonical lifecycle households first.
+    for hid, humans in sorted(human_households.items()):
+        living = [p for p in humans if isinstance(p, dict) and p.get('alive', True)]
+        names = sorted(str(p.get('name') or '') for p in living if p.get('name'))
+        persona_members = sorted(n for n in names if n in persona_set)
+        stages = [str(p.get('life_stage') or 'adult') for p in living]
         result[hid] = {
             'household_id': hid,
-            'members': sorted(members),
-            'household_size': max(len(members), len(stages), 1),
-            'life_stages': stages or ['adult'] * max(1, len(members)),
+            'members': persona_members,
+            'all_members': names,
+            'household_size': max(len(living), 1),
+            'life_stages': stages or ['adult'],
+            'source': 'humanity.people.household_id',
+        }
+
+    # Safety compatibility for any persona absent from lifecycle state.
+    covered = {name for rec in result.values() for name in rec.get('all_members', [])}
+    for name in sorted(persona_set - covered):
+        hid = f'HH-{hash_id(name, 12)}'
+        age = int(by_name.get(name, {}).get('age', 35) or 35)
+        stage = 'teen' if age < 18 else ('senior' if age >= 65 else 'adult')
+        result[hid] = {
+            'household_id': hid,
+            'members': [name],
+            'all_members': [name],
+            'household_size': 1,
+            'life_stages': [stage],
+            'source': 'economy_compat_singleton',
         }
     return result
 
@@ -314,7 +330,7 @@ def initialize_households() -> tuple[dict[str, Any], dict[str, Any]]:
     if not isinstance(households, dict): households = {}
     for hid, hh in blueprint.items():
         rec = households.get(hid, {}) if isinstance(households.get(hid), dict) else {}
-        rec.update({k:v for k,v in hh.items() if k in {'household_id','members','household_size','life_stages'}})
+        rec.update({k:v for k,v in hh.items() if k in {'household_id','members','all_members','household_size','life_stages','source'}})
         rec.setdefault('created_at', utc_now())
         rec.setdefault('arrears', {})
         rec.setdefault('hardship_weeks', 0)
@@ -631,6 +647,7 @@ def build_summary(state: dict[str,Any] | None = None) -> dict[str,Any]:
     total_occupied = sum(1 for u in units.values() if u.get('occupied_by'))
     out = {
         'version':VERSION,'updated_at':utc_now(),'world_week':state.get('last_processed_week'),'households':len(all_hh),'settled_households':len(active_hh),'housing_units':len(units),'occupied_units':total_occupied,'vacant_units':max(0,len(units)-total_occupied),
+        'household_truth':'humanity.people.household_id',
         'homeownership_rate':round(100*sum(v for k,v in tenures.items() if k in {'owned','mortgage'})/max(1,sum(tenures.values())),1),
         'median_weekly_household_income':int(median(incomes)) if incomes else 0,'median_weekly_housing_cost':int(median(housing_costs)) if housing_costs else 0,
         'hardship_households':hardship,'hardship_rate':round(100*hardship/max(1,len(all_hh)),1),'arrears_total':arrears_total,'economic_classes':dict(classes),'tenure':dict(tenures),
