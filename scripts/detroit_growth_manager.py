@@ -14,7 +14,7 @@ WORLD = ROOT / "data" / "detroit_persistent"
 HUM = WORLD / "humanity"
 PERSONA = WORLD / "persona"
 STATE_PATH = HUM / "promotion_state.json"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 def utc_now() -> str:
@@ -360,6 +360,38 @@ def prepare_for_boot() -> dict[str, Any]:
     year = current_year()
     carried_forward = ensure_profile_years(year)
     promoted = promote_background_people(year)
+
+    # AGENTOPIA_CIVILIZATION_STORE_RC2
+    # JSON remains the migration/debug source while SQLite provides indexed
+    # population/state lookup and the append-only civilization event ledger.
+    store_summary = {}
+    try:
+        import detroit_state_store as _state_store
+        store_summary = _state_store.sync_legacy_state()
+        if promoted:
+            conn = _state_store.connect()
+            people = read_json(HUM / "people.json", {})
+            by_name = {
+                str(p.get("name") or ""): str(pid)
+                for pid, p in people.items()
+                if isinstance(p, dict)
+            } if isinstance(people, dict) else {}
+            with _state_store.transaction(conn):
+                for name in promoted:
+                    _state_store.append_event(
+                        conn,
+                        "persona_promoted",
+                        sim_year=year,
+                        subject_id=by_name.get(name),
+                        payload={"name": name},
+                        source="detroit_growth_manager",
+                        importance=1.5,
+                        dedupe_key=f"persona-promoted:{year}:{name}",
+                    )
+            conn.close()
+    except Exception as store_error:
+        store_summary = {"warning": str(store_error)}
+
     total_personas = len([p for p in PERSONA.iterdir() if p.is_dir()]) if PERSONA.exists() else 0
     target = recommend_active_target(total_personas)
     result = {
@@ -369,6 +401,7 @@ def prepare_for_boot() -> dict[str, Any]:
         "promoted": promoted,
         "persona_population": total_personas,
         "recommended_active_ai": target,
+        "civilization_store": store_summary,
     }
     write_json(HUM / "growth_summary.json", result)
     return result

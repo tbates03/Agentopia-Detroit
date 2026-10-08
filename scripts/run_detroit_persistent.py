@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORLD = ROOT / "data" / "detroit_persistent"
 VIEW = WORLD / ".active_persona_view"
 META = WORLD / "persistent_world.json"
-VERSION = "1.8.0-RC1"
+VERSION = "1.8.0-RC2"
 
 
 def now(): return datetime.now(timezone.utc).isoformat()
@@ -67,6 +67,8 @@ growth_cfg.setdefault("global_prompt_agent_limit", 48)
 growth_cfg.setdefault("encounter_prompt_agents_per_day", 48)
 growth_cfg.setdefault("public_location_people_per_location", 3)
 growth_cfg.setdefault("public_location_max", 120)
+growth_cfg.setdefault("state_store", "sqlite")
+growth_cfg.setdefault("activation_policy", "relevance")
 write(cfg_path, cfg)
 
 # Refresh persistent background society and promote a bounded number of adults
@@ -108,25 +110,35 @@ else:
         int(os.environ.get("AGENTOPIA_ACTIVE_CITIZENS", growth_cfg.get("active_ai_min", 64))),
     )
 
-# Mission/faction leaders are pinned, then existing foreground citizens are
-# preferred, then growth-pool/background citizens fill new capacity.
+# AGENTOPIA_RELEVANCE_ACTIVATION_RC2
+# Leaders/faction-critical citizens are pinned. Remaining active slots are
+# selected by recent high-signal civilization events with deterministic ties.
 by_name = {p.name: p for p in all_personas}
 pinned_names = {"TGOT", "Morbeious"} | faction_names
 active = []
-seen = set()
-
-def _add_persona(path):
-    if path is None or path.name in seen or len(active) >= active_target:
-        return
-    active.append(path)
-    seen.add(path.name)
-
-for name in sorted(pinned_names, key=lambda x: (0 if x in {"TGOT", "Morbeious"} else 1, x.casefold())):
-    _add_persona(by_name.get(name))
-for p in foreground:
-    _add_persona(p)
-for p in background:
-    _add_persona(p)
+try:
+    import detroit_relevance_activation as _relevance
+    selected_names = _relevance.select_names(
+        by_name.keys(),
+        target=active_target,
+        year=year,
+        pinned_names=pinned_names,
+    )
+    active = [by_name[name] for name in selected_names if name in by_name]
+except Exception as _activation_error:
+    print(f"[growth] WARNING: relevance activation failed, using deterministic fallback: {_activation_error}")
+    seen = set()
+    def _add_persona(path):
+        if path is None or path.name in seen or len(active) >= active_target:
+            return
+        active.append(path)
+        seen.add(path.name)
+    for name in sorted(pinned_names, key=lambda x: (0 if x in {"TGOT", "Morbeious"} else 1, x.casefold())):
+        _add_persona(by_name.get(name))
+    for p in foreground:
+        _add_persona(p)
+    for p in background:
+        _add_persona(p)
 
 leader_order = {"TGOT": 0, "Morbeious": 1}
 active.sort(key=lambda p: (leader_order.get(p.name, 10), p.name.casefold()))
@@ -164,6 +176,8 @@ meta.update({
     "active_ai_citizens": len(active),
     "active_persona_view": str(VIEW),
     "cyber_model_ready": cyber_ready,
+    "activation_policy": growth_cfg.get("activation_policy", "relevance"),
+    "civilization_store": growth_cfg.get("state_store", "sqlite"),
 })
 write(META, meta)
 
