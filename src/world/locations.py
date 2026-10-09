@@ -198,15 +198,25 @@ class LocationStore:
             target,
             missing,
         )
-        generated = generate_locations_via_llm(
-            world_cfg,
-            {
-                "n_locations": missing,
-                "detail_level": str(loc_cfg.get("detail_level", "medium")).lower(),
-            },
-            agents_summary,
-            avoid_names=list(self.public.keys()),
-        )
+        # AGENTOPIA_LOCAL_MAPGEN_FAILSOFT_RC2
+        # Public-map growth is optional. An unavailable LLM must never
+        # terminate the persistent Detroit world during initialization.
+        try:
+            generated = generate_locations_via_llm(
+                world_cfg,
+                {
+                    "n_locations": missing,
+                    "detail_level": str(loc_cfg.get("detail_level", "medium")).lower(),
+                },
+                agents_summary,
+                avoid_names=list(self.public.keys()),
+            )
+        except RuntimeError as exc:
+            self.logger.warning(
+                "[locations] public map expansion deferred; keeping existing map: %s",
+                exc,
+            )
+            return
         added = 0
         for key, value in sorted((generated.get("public") or {}).items()):
             if key in self.public:

@@ -633,6 +633,16 @@ def update() -> dict[str, Any]:
     interventions=update_radicalization(people,year)
     household_reconciliation=reconcile_household_ids(people)
     save_state(people)
+    # AGENTOPIA_FAMILY_AUTONOMY_V175_BEGIN
+    # Family milestones run once after the authoritative lifecycle state is saved.
+    # They do not modify population, households, finance, or birth logic.
+    try:
+        from scripts.detroit_family_autonomy_v175 import run as _family_autonomy_run
+        _family_autonomy_run(ROOT, year)
+    except Exception as _family_error:
+        import logging as _family_logging
+        _family_logging.getLogger(__name__).exception('Family milestones failed: %s', _family_error)
+    # AGENTOPIA_FAMILY_AUTONOMY_V175_END
     return write_summary(people,year,interventions,household_reconciliation)
 
 

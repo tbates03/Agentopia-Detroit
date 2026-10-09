@@ -627,6 +627,47 @@ class WorldReader:
                 pass
         return []
 
+    # AGENTOPIA_8766_LIVE_CLOCK_V1
+    def _live_engine_stage(self) -> dict[str, Any]:
+        """Best-effort committed vs in-progress stage from the local engine log."""
+        log = self.root / "logs" / "agentopia-launchd.err.log"
+        heartbeat = self.root / "runtime" / "engine_heartbeat.json"
+        hb = read_json(heartbeat, {})
+        alive = False
+        try:
+            alive = (time.time() - heartbeat.stat().st_mtime) < 30
+        except OSError:
+            pass
+        if not alive or not log.exists():
+            return {"active": False, "completed": 0}
+        try:
+            with log.open("rb") as fp:
+                fp.seek(0, 2)
+                fp.seek(max(0, fp.tell() - 3000000))
+                lines = fp.read().decode("utf-8", "replace").splitlines()
+        except OSError:
+            return {"active": False, "completed": 0}
+        stage_pattern = re.compile(r"== (BEFORE_CONTACT|CONTACT|AFTER CONTACT|ACTIVITY|REVIEW|END|BEGIN) STAGE == year=(\d+) week=(\d+)(?: (?:slot|day)=(\d+))?")
+        finished_pattern = re.compile(r"\[ACTIVITY_RESILIENCE\] completed .*?-Y(\d+)-W(\d+)-activity-D(\d+)-")
+        latest = None
+        for line in lines:
+            match = stage_pattern.search(line)
+            if match:
+                label, year, week, num = match.groups()
+                stage = label.lower().replace(" ", "_")
+                day = int(num or 0) if stage == "activity" else 0
+                latest = {"year": int(year), "week": int(week), "day": day, "stage": stage, "slot": int(num or 0) if stage == "contact" else 0}
+        if not latest:
+            return {"active": False, "completed": 0}
+        completed = set()
+        for line in lines:
+            match = finished_pattern.search(line)
+            if match and (int(match.group(1)), int(match.group(2))) == (latest["year"], latest["week"]):
+                if latest["day"] == 0 or latest["day"] == int(match.group(3)):
+                    completed.add(line.split("completed ", 1)[-1].split(" barrier_elapsed", 1)[0])
+        latest.update({"active": True, "completed": len(completed), "heartbeat_pid": hb.get("pid")})
+        return latest
+
     def snapshot(self, requested: str | None = None) -> dict[str, Any]:
         # requested='auto' intentionally follows the most recently changing run.
         if requested == "auto":
@@ -704,6 +745,15 @@ class WorldReader:
                 observed_times.append(val)
 
         current_time = max(observed_times, key=time_sort_key) if observed_times else ""
+        live_progress = self._live_engine_stage() if run.name == "detroit_persistent" else {"active": False, "completed": 0}
+        if live_progress.get("active"):
+            s = live_progress
+            clock = f"Y{s['year']}-W{s['week']:02d}-{s['stage']}"
+            if s.get("day"):
+                clock += f"-D{s['day']}"
+            # Never allow an older log to roll back newer persisted records.
+            if time_sort_key(clock) >= time_sort_key(current_time):
+                current_time = clock
         checkpoint = read_json(run / "checkpoint.json", {})
         if not current_time and isinstance(checkpoint, dict):
             y, w = checkpoint.get("year"), checkpoint.get("week")
@@ -988,6 +1038,19 @@ class WorldReader:
         except Exception:
             release_version = "1.7.4.2"
 
+        # AGENTOPIA_8766_AUTHORITATIVE_VERSION_V2
+        # Active engine heartbeat is authoritative; VERSION is a legacy fallback.
+        engine_hb_path = self.root / "runtime" / "engine_heartbeat.json"
+        engine_hb = read_json(engine_hb_path, {})
+        try:
+            hb_age = time.time() - engine_hb_path.stat().st_mtime
+            hb_version = str(engine_hb.get("version") or "").strip()
+            if 0 <= hb_age < 90 and re.fullmatch(r"[0-9]+(?:\.[0-9]+){1,3}(?:[-+][A-Za-z0-9._-]+)?", hb_version):
+                release_version = hb_version
+        except (OSError, TypeError, ValueError):
+            pass
+        release_name = "Detroit Continuum / Live Engine" if release_version == str(engine_hb.get("version") or "") else "Mobility & Time"
+
         # AGENTOPIA_EDUCATION_SKILLS_SNAPSHOT_V172
         education_skills = read_json(run / "education" / "summary.json", {})
 
@@ -1004,7 +1067,7 @@ class WorldReader:
             "ok": True,
             "release_version": release_version,
             "app_version": release_version,
-            "release_name": "Mobility & Time",
+            "release_name": release_name,
             "detroit_history": detroit_history,
             "founders_registry": founders_registry,
             "speed": speed_state,
@@ -1024,6 +1087,7 @@ class WorldReader:
             "runs": self.runs(),
             "run_activity_mtime": self._run_activity_mtime(run),
             "current_time": current_time,
+            "live_progress": live_progress,
             "current_time_parsed": parse_time(current_time),
             "agent_count": runtime_active_count,
             "runtime_active_count": runtime_active_count,
@@ -1124,6 +1188,17 @@ class AppHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         query = urllib.parse.parse_qs(parsed.query)
+        # AGENTOPIA_FAMILY_API_V175_BEGIN
+        if parsed.path == "/api/family":
+            try:
+                family_path = self.app.reader.root / "data" / "detroit_persistent" / "humanity" / "family_v175" / "events.json"
+                payload = json.loads(family_path.read_text(encoding="utf-8")) if family_path.exists() else {"schema":1,"events":[]}
+                events = payload.get("events", [])
+                self.send_json({"ok":True,"version":"1.7.5","count":len(events),"recent":events[-40:]})
+            except Exception as exc:
+                self.send_json({"ok":False,"error":str(exc)}, 500)
+            return
+        # AGENTOPIA_FAMILY_API_V175_END
         if parsed.path == "/api/snapshot":
             requested = query.get("run", [None])[0]
             try:
@@ -1176,7 +1251,18 @@ def main() -> int:
         return 2
 
     reader = WorldReader(root)
-    server = AppServer((args.host, args.port), reader, script_dir / "static", args.verbose)
+    # AGENTOPIA_RC2_OBSERVER_SINGLETON_V31
+    try:
+        server = AppServer((args.host, args.port), reader, script_dir / "static", args.verbose)
+    except OSError as exc:
+        if getattr(exc, "errno", None) == 48:
+            print(
+                f"[observer] {args.host}:{args.port} already owned; "
+                "existing observer remains authoritative",
+                flush=True,
+            )
+            return 0
+        raise
     url = f"http://{args.host}:{args.port}/"
     print("=" * 62)
     print(" Agentopia Live World")

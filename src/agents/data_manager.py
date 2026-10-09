@@ -210,6 +210,18 @@ class DataManager:
                         except Exception:
                             last_t = None  # corrupt line — skip check
                         if last_t is not None and new_t < last_t:
+                            # AGENTOPIA_RC2_SAME_WEEK_REPLAY_GUARD_V31
+                            _agentopia_new_time = str(new_t)
+                            _agentopia_old_time = str(last_t)
+                            _agentopia_new_week = _agentopia_new_time.split("-", 2)[:2]
+                            _agentopia_old_week = _agentopia_old_time.split("-", 2)[:2]
+                            if _agentopia_new_week == _agentopia_old_week:
+                                print(
+                                    f"[STATE_REPLAY_GUARD_V31] skipping stale same-week append "
+                                    f"{_agentopia_new_time} after {_agentopia_old_time}",
+                                    flush=True,
+                                )
+                                return
                             raise ValueError(
                                 f"Time-order violation in {path.name}: "
                                 f"appending {new_t} after {last_t}"

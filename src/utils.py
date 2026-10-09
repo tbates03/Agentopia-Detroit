@@ -1048,6 +1048,7 @@ def _call_openai_chat(model, messages, functions, tool_choice, max_tokens, **kwa
         if isinstance(tool_choice, dict):
             chat_kwargs["tool_choice"] = tool_choice
 
+    chat_kwargs = _agentopia_rc2_context_guard_v31(chat_kwargs)
     response = client.chat.completions.create(**chat_kwargs)
     msg = response.choices[0].message
     return _normalize_openai_chat_msg(msg)
@@ -1094,6 +1095,100 @@ def _is_closed_source_model(model: str) -> bool:
         return True
     return False
 
+
+# AGENTOPIA_RC2_CONTEXT_GUARD_V31
+def _agentopia_rc2_trim_text_v31(text, limit):
+    if not isinstance(text, str) or len(text) <= limit:
+        return text
+    if limit < 1200:
+        return text[:limit]
+    marker = "\n...[AGENTOPIA CONTEXT COMPACTED FOR 16K WINDOW]...\n"
+    usable = max(0, limit - len(marker))
+    head = int(usable * 0.62)
+    tail = usable - head
+    return text[:head] + marker + text[-tail:]
+
+
+def _agentopia_rc2_context_guard_v31(chat_kwargs):
+    # Conservative guard for local 16K llama.cpp models.
+    try:
+        kw = dict(chat_kwargs)
+        messages = list(kw.get("messages") or [])
+        if not messages:
+            return kw
+
+        extras = 0
+        for k in ("tools", "functions", "response_format"):
+            if k in kw:
+                extras += len(str(kw.get(k)))
+
+        # ~38K English chars generally stays well below 16K tokens and
+        # leaves room for schemas and response generation.
+        target = max(3000, 12000 - min(extras, 9000))
+
+        copied = []
+        total = 0
+        for m in messages:
+            if isinstance(m, dict):
+                mm = dict(m)
+                c = mm.get("content")
+                if isinstance(c, str):
+                    total += len(c)
+                copied.append(mm)
+            else:
+                copied.append(m)
+
+        if total <= target:
+            kw["messages"] = copied
+            return kw
+
+        # Compact oldest non-system turns first.
+        for i in range(1, max(1, len(copied) - 1)):
+            if total <= target:
+                break
+            m = copied[i]
+            if not isinstance(m, dict):
+                continue
+            if str(m.get("role") or "").lower() == "system":
+                continue
+            c = m.get("content")
+            if not isinstance(c, str) or len(c) < 1800:
+                continue
+            new = _agentopia_rc2_trim_text_v31(c, 900)
+            total -= len(c) - len(new)
+            m["content"] = new
+
+        # Then compact the longest remaining message(s), preserving head/tail.
+        while total > target:
+            candidates = []
+            for i, m in enumerate(copied):
+                if isinstance(m, dict) and isinstance(m.get("content"), str):
+                    candidates.append((len(m["content"]), i))
+            if not candidates:
+                break
+            candidates.sort(reverse=True)
+            size, i = candidates[0]
+            if size <= 2200:
+                break
+            excess = total - target
+            new_limit = max(2200, size - max(excess, 1600))
+            old = copied[i]["content"]
+            new = _agentopia_rc2_trim_text_v31(old, new_limit)
+            if len(new) >= len(old):
+                break
+            copied[i]["content"] = new
+            total -= len(old) - len(new)
+
+        print(
+            f"[CONTEXT_GUARD_V32] compacted messages to {total} chars "
+            f"(target={target}, schema_chars={extras})",
+            flush=True,
+        )
+        kw["messages"] = copied
+        return kw
+    except Exception as exc:
+        print(f"[CONTEXT_GUARD_V32] fail-open: {exc}", flush=True)
+        return chat_kwargs
 
 @cached
 def generate_with_fc(
@@ -1215,6 +1310,7 @@ def generate_with_fc(
                         chat_kwargs["tool_choice"] = tool_choice
 
                 try:
+                    chat_kwargs = _agentopia_rc2_context_guard_v31(chat_kwargs)
                     response = client.chat.completions.create(**chat_kwargs)
                 except Exception as e:
                     error_str = str(e)
@@ -1250,6 +1346,7 @@ def generate_with_fc(
                                     context_length,
                                 )
                                 chat_kwargs["max_tokens"] = adjusted_max
+                                chat_kwargs = _agentopia_rc2_context_guard_v31(chat_kwargs)
                                 response = client.chat.completions.create(**chat_kwargs)
                             else:
                                 raise ValueError(
@@ -1293,6 +1390,7 @@ def generate_with_fc(
                             elapsed += wait_time
 
                             try:
+                                chat_kwargs = _agentopia_rc2_context_guard_v31(chat_kwargs)
                                 response = client.chat.completions.create(**chat_kwargs)
                                 break
                             except Exception as retry_e:
@@ -3536,3 +3634,43 @@ def pool_size(n: int, divisor: int = 1) -> int:
     max_concurrency = int(cfg["max_concurrency"])
     effective_max = max(1, -(-max_concurrency // divisor))  # ceiling division
     return max(1, min(n, effective_max))
+
+
+
+# AGENTOPIA_DURABLE_MODEL_GATE_V3
+# Bound in-flight per-model top-level LLM calls; never change world concurrency.
+# The internal function invokes generate_with_fc recursively during retries:
+# bypass reentrant admissions to avoid a self-deadlock.
+import functools as _agentopia_gate_functools
+import threading as _agentopia_gate_threading
+import time as _agentopia_gate_time
+_agentopia_gate_limits = {"liquid-social": 32, "liquid-citizen": 32,
+                         "liquid-strategy": 6, "cyber-specialist": 6}
+_agentopia_gate_locks = {k: _agentopia_gate_threading.BoundedSemaphore(v)
+                        for k, v in _agentopia_gate_limits.items()}
+_agentopia_gate_local = _agentopia_gate_threading.local()
+_agentopia_gate_original_generate_with_fc = generate_with_fc
+
+@_agentopia_gate_functools.wraps(_agentopia_gate_original_generate_with_fc)
+def generate_with_fc(*args, **kwargs):
+    if getattr(_agentopia_gate_local, "depth", 0):
+        return _agentopia_gate_original_generate_with_fc(*args, **kwargs)
+    model = kwargs.get("model", args[0] if args else None)
+    lock = _agentopia_gate_locks.get(model)
+    if lock is None:
+        return _agentopia_gate_original_generate_with_fc(*args, **kwargs)
+    started = _agentopia_gate_time.monotonic()
+    lock.acquire()
+    waited = _agentopia_gate_time.monotonic() - started
+    _agentopia_gate_local.depth = 1
+    try:
+        if waited > 5:
+            try:
+                logger.warning("[DURABLE_GATE] model=%s wait_seconds=%.2f", model, waited)
+            except Exception:
+                pass
+        return _agentopia_gate_original_generate_with_fc(*args, **kwargs)
+    finally:
+        _agentopia_gate_local.depth = 0
+        lock.release()
+# AGENTOPIA_DURABLE_MODEL_GATE_V3_END
