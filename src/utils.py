@@ -1096,8 +1096,6 @@ def _is_closed_source_model(model: str) -> bool:
     return False
 
 
-@cached
-
 # AGENTOPIA_RC2_CONTEXT_GUARD_V31
 def _agentopia_rc2_trim_text_v31(text, limit):
     if not isinstance(text, str) or len(text) <= limit:
@@ -1192,6 +1190,7 @@ def _agentopia_rc2_context_guard_v31(chat_kwargs):
         print(f"[CONTEXT_GUARD_V32] fail-open: {exc}", flush=True)
         return chat_kwargs
 
+@cached
 def generate_with_fc(
     model: str,
     messages: list,
