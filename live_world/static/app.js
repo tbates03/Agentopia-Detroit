@@ -327,7 +327,7 @@
     }catch(err){connection.textContent=`Speed change failed • ${err.message}`;connection.className='status-dot error';}
   }
 
-  function renderAll(){renderHeader();renderRuns();renderMap();renderBuildings();renderNetwork();renderCognition();renderHumanity();renderInspector();renderConversations();renderEvents();renderDetroitTimeline();renderSpeed();renderInterior();if(window.AgentopiaV161Finance)window.AgentopiaV161Finance(state.snapshot);if(window.AgentopiaV1614Career)window.AgentopiaV1614Career(state.snapshot);if(window.AgentopiaV170Economy)window.AgentopiaV170Economy(state.snapshot);if(window.AgentopiaV171Business)window.AgentopiaV171Business(state.snapshot);if(window.AgentopiaV172Education)window.AgentopiaV172Education(state.snapshot);if(window.AgentopiaV173Health)window.AgentopiaV173Health(state.snapshot);if(window.AgentopiaV174Mobility)window.AgentopiaV174Mobility(state.snapshot);if(window.AgentopiaV100WorldContext)window.AgentopiaV100WorldContext(state.snapshot);}
+  function renderAll(){renderHeader();renderRuns();renderMap();renderBuildings();renderNetwork();renderCognition();renderHumanity();renderInspector();renderConversations();renderEvents();renderDetroitTimeline();renderSpeed();renderInterior();if(window.AgentopiaV161Finance)window.AgentopiaV161Finance(state.snapshot);if(window.AgentopiaV1614Career)window.AgentopiaV1614Career(state.snapshot);if(window.AgentopiaV170Economy)window.AgentopiaV170Economy(state.snapshot);if(window.AgentopiaV171Business)window.AgentopiaV171Business(state.snapshot);if(window.AgentopiaV172Education)window.AgentopiaV172Education(state.snapshot);if(window.AgentopiaV173Health)window.AgentopiaV173Health(state.snapshot);if(window.AgentopiaV174Mobility)window.AgentopiaV174Mobility(state.snapshot);if(window.AgentopiaV100WorldContext)window.AgentopiaV100WorldContext(state.snapshot);;/* AGENTOPIA_8766_AUTHORITATIVE_VERSION_V2 */{const s=state.snapshot||{};const v=String(s.release_version||s.app_version||'unknown');const name=String(s.release_name||'Detroit Continuum');const e=document.getElementById('agentopiaReleaseVersion');if(e){e.textContent='Agentopia Detroit v'+v+' · '+name;}const pulse=document.getElementById('cityPulseVersion');if(pulse){pulse.textContent='Engine v'+v;}}}
 
   async function load(){
     try{
@@ -335,7 +335,7 @@
       if(!data.ok){state.snapshot=data;const e=data.engine||{};connection.textContent=(e.process_running?'Agentopia initializing':'Agentopia not running')+' • '+(data.error||'Waiting for run');connection.className='status-dot';return;}
       state.snapshot=data;
       if(state.selected&&!data.agents.some(a=>a.name===state.selected))state.selected=null;
-      const mode=state.run==='auto'?'AUTO → ':'';const pop=data.population_total||data.agent_count;connection.textContent=`Connected • ${mode}${data.run} • ${data.agent_count} active / ${pop} citizens`;connection.className='status-dot online';renderAll();
+      const mode=state.run==='auto'?'AUTO → ':'';const pop=data.population_total||data.agent_count;connection.textContent=`Connected • ${mode}${data.run} • ${data.agent_count} active / ${pop} citizens${data.live_progress?.active ? ` • LIVE ${data.live_progress.stage.replaceAll("_"," ").toUpperCase()}${data.live_progress.day ? ` DAY ${data.live_progress.day}` : ""} • ${data.live_progress.completed} completed activities` : ""}`;connection.className='status-dot online';renderAll();
     }catch(err){connection.textContent='Connection error: '+err.message;connection.className='status-dot error';}
   }
   function schedule(){clearInterval(state.timer);if(state.live)state.timer=setInterval(load,2000)}
@@ -1289,3 +1289,96 @@
   console.info('[Agentopia] World Context v1.0.0 dashboard active');
 })();
 /* AGENTOPIA_WORLD_CONTEXT_V100_JS_END */
+
+/* AGENTOPIA_FAMILY_NATIVE_V175_BEGIN */
+(() => {
+  'use strict';
+  const TID = 'agentopiaFamilyNativeV175';
+  function init() {
+    if (document.getElementById(TID)) return;
+    const tabs = document.querySelector('.view-tabs[role="tablist"]');
+    const neighborhood = document.getElementById('mapView');
+    if (!tabs || !neighborhood || !neighborhood.parentNode) {
+      console.warn('[Agentopia Family] Native navigation unavailable');
+      return;
+    }
+    // Explicitly clean up an older floating panel if it survived a partial update.
+    document.getElementById('agentopiaFamilyV175Button')?.remove();
+    document.getElementById('agentopiaFamilyV175')?.remove();
+    document.getElementById('agentopiaFamilyV175Style')?.remove();
+    const tab = document.createElement('button');
+    tab.id = TID;
+    tab.type = 'button';
+    tab.className = 'tab';
+    tab.dataset.view = 'family';
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', 'false');
+    tab.textContent = 'Family & Generations';
+    const after = tabs.querySelector('.tab[data-view="humanity"]') || tabs.querySelector('.tab[data-view="network"]');
+    if (after) after.after(tab); else tabs.appendChild(tab);
+    const view = document.createElement('section');
+    view.id = 'familyView';
+    view.className = 'view-panel';
+    view.setAttribute('role', 'tabpanel');
+    view.setAttribute('aria-labelledby', TID);
+    view.innerHTML = '<div class="family-native-shell"><div class="family-native-head"><div><strong>Family & Generations</strong><span>Persistent relationships and life events · v1.7.5</span></div><span id="familyNativeUpdated" class="muted">Waiting...</span></div><div class="family-native-summary" id="familyNativeSummary" role="status">Loading family events...</div><div id="familyNativeEvents" class="family-native-events"></div></div>';
+    neighborhood.parentNode.insertBefore(view, neighborhood.nextSibling);
+    const style = document.createElement('style');
+    style.id = TID + 'CSS';
+    style.textContent = '.family-native-shell{padding:16px;min-height:340px;color:inherit}.family-native-head{display:flex;justify-content:space-between;align-items:center;gap:14px;padding-bottom:14px;border-bottom:1px solid #53688055}.family-native-head strong{display:block;font-size:18px}.family-native-head span{display:block;font-size:12px;opacity:.76;margin-top:4px}.family-native-summary{margin:14px 0;padding:12px;border:1px solid #53688077;border-radius:8px}.family-native-events{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.family-native-events article{border:1px solid #53688077;border-radius:10px;padding:14px;min-height:90px;overflow-wrap:anywhere}.family-native-events article strong{display:block;font-size:14px;text-transform:capitalize}.family-native-events article small{display:block;opacity:.7;margin-top:10px}';
+    document.head.appendChild(style);
+    let fetching = false;
+    async function refresh() {
+      if (fetching) return;
+      fetching = true;
+      const summary = document.getElementById('familyNativeSummary');
+      const events = document.getElementById('familyNativeEvents');
+      try {
+        const response = await fetch('/api/family', {cache:'no-store'});
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const payload = await response.json();
+        if (!payload || payload.ok !== true || !Array.isArray(payload.recent)) throw new Error('Unexpected API response');
+        const count = Number.isFinite(+payload.count) ? +payload.count : payload.recent.length;
+        summary.textContent = `${count} recorded family event${count === 1 ? '' : 's'}${count === 0 ? ' · Autonomous annual events begin after the engine loads the lifecycle hook.' : ''}`;
+        events.replaceChildren();
+        payload.recent.slice(-50).reverse().forEach(record => {
+          const card = document.createElement('article');
+          const heading = document.createElement('strong');
+          heading.textContent = String(record.type || record.kind || record.event_type || 'Family milestone').replace(/_/g,' ');
+          const detail = document.createElement('div');
+          const persons = record.participants || record.people || record.person_ids || record.person_id || record.partners || [];
+          detail.textContent = Array.isArray(persons) ? persons.map(String).join(' · ') : String(persons || '');
+          const meta = document.createElement('small');
+          meta.textContent = [record.year != null ? `Year ${record.year}` : '',record.week != null ? `Week ${record.week}` : '',record.event_id || record.id || ''].filter(Boolean).join(' · ');
+          card.append(heading, detail, meta);
+          events.appendChild(card);
+        });
+        document.getElementById('familyNativeUpdated').textContent = 'Feed connected';
+      } catch(error) {
+        summary.textContent = 'Family feed unavailable: ' + error.message;
+        document.getElementById('familyNativeUpdated').textContent = 'Offline';
+      } finally { fetching = false; }
+    }
+    // Capture phase avoids old navigation handlers forcing a different panel active.
+    document.addEventListener('click', event => {
+      const target = event.target && event.target.closest ? event.target.closest('.tab[data-view="family"]') : null;
+      if (target !== tab) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      document.querySelectorAll('.tab').forEach(node => {
+        const selected = node === tab;
+        node.classList.toggle('active', selected);
+        node.setAttribute('aria-selected', String(selected));
+      });
+      document.querySelectorAll('.view-panel').forEach(panel => panel.classList.toggle('active', panel === view));
+      refresh();
+    }, true);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && view.classList.contains('active')) refresh(); });
+    setInterval(() => { if (!document.hidden && view.classList.contains('active')) refresh(); }, 10000);
+    refresh();
+    console.info('[Agentopia] Family & Generations integrated into native navigation');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+})();
+/* AGENTOPIA_FAMILY_NATIVE_V175_END */
