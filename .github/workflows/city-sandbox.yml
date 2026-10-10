@@ -1,0 +1,29 @@
+name: Isolated City Sandbox
+on:
+  pull_request:
+    paths:
+      - "scripts/run_city_sandbox.py"
+      - "scripts/test_city_sandbox.py"
+      - "docs/CITY_SANDBOX.md"
+      - ".github/workflows/city-sandbox.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/run_city_sandbox.py"
+      - "scripts/test_city_sandbox.py"
+      - "docs/CITY_SANDBOX.md"
+      - ".github/workflows/city-sandbox.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile scripts
+        run: python3 -m py_compile scripts/import_city_manifest.py scripts/run_city_sandbox.py scripts/test_city_sandbox.py
+      - name: Test isolated city state and replay
+        run: python3 scripts/test_city_sandbox.py
