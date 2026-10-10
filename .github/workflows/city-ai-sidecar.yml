@@ -1,0 +1,29 @@
+name: Multi-City AI Sidecar
+on:
+  pull_request:
+    paths:
+      - "scripts/city_ai_coordinator.py"
+      - "scripts/test_city_ai_coordinator.py"
+      - "docs/CITY_AI_SIDECAR.md"
+      - ".github/workflows/city-ai-sidecar.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/city_ai_coordinator.py"
+      - "scripts/test_city_ai_coordinator.py"
+      - "docs/CITY_AI_SIDECAR.md"
+      - ".github/workflows/city-ai-sidecar.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate and test
+        run: |
+          python3 -m py_compile scripts/city_ai_coordinator.py scripts/test_city_ai_coordinator.py
+          python3 scripts/test_city_ai_coordinator.py
