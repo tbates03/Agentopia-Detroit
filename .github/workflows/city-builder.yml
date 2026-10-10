@@ -1,0 +1,32 @@
+name: City Builder Preview
+on:
+  pull_request:
+    paths:
+      - "live_world/static/city-builder.html"
+      - "live_world/static/index.html"
+      - "scripts/test_city_builder.py"
+      - "docs/CITY_BUILDER.md"
+      - ".github/workflows/city-builder.yml"
+  push:
+    branches: [main]
+    paths:
+      - "live_world/static/city-builder.html"
+      - "live_world/static/index.html"
+      - "scripts/test_city_builder.py"
+      - "docs/CITY_BUILDER.md"
+      - ".github/workflows/city-builder.yml"
+permissions:
+  contents: read
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify City Builder HTML, JavaScript and navigation
+        run: python3 scripts/test_city_builder.py
