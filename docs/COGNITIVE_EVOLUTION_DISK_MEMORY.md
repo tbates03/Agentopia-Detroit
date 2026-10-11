@@ -48,7 +48,7 @@ python3 scripts/detroit_cognitive_memory.py recall --agent TGOT --query audit
 python3 scripts/detroit_reasoning_governor.py --demo
 ```
 
-**Opt in to runtime read/index integration only after tests:** export `AGENTOPIA_COGNITIVE_MEMORY_ENABLED=1` in the environment of the persistent engine AND cognition sidecar, then restart them at a safe year boundary. With the variable unset, existing behavior stays in place. The reasoning governor is **advisory only**; it evaluates hypothetical metadata and makes no live model calls, creates no fourth server and does not mutate the world.
+**Runtime integration is not yet implemented:** the CLI index and governor can be tested offline, but setting `AGENTOPIA_COGNITIVE_MEMORY_ENABLED=1` currently has no effect. A subsequent reviewed change must wire ingestion and retrieval into the persistent engine/cognition sidecar, implement that opt-in flag, and add integration tests before a safe-year-boundary rollout. The reasoning governor is **advisory only**; it evaluates hypothetical metadata and makes no live model calls, creates no fourth server and does not mutate the world.
 
 ## Read-only Mac memory check
 
@@ -72,4 +72,4 @@ Open Activity Monitor -> Memory. A **green Memory Pressure** graph with low swap
 4. **Later inference trial:** provision one candidate deep reasoner only after verifying available RAM, supported llama.cpp flags, pressure, queue capacity and a rollback plan.
 5. **Gate release:** compare decision quality **and** throughput before enabling any escalation in the live world.
 
-Rollback: unset `AGENTOPIA_COGNITIVE_MEMORY_ENABLED`; the original diaries and world continue functioning. Keep the SQLite index for later diagnosis, or rebuild it offline from canonical JSONL. Do not force SSD paging of the llama.cpp KV cache.
+Rollback of this prototype: stop invoking the indexing CLI; it has no runtime hook. After future opt-in integration, disabling the feature flag must restore original behavior. Keep the SQLite index for later diagnosis, or rebuild it offline from canonical JSONL. Do not force SSD paging of the llama.cpp KV cache.
