@@ -1,0 +1,27 @@
+name: Universal World Registry
+on:
+  pull_request:
+    paths:
+      - "scripts/world_registry.py"
+      - "scripts/test_world_registry.py"
+      - ".github/workflows/world-registry.yml"
+      - "docs/UNIVERSAL_WORLD_ENGINE.md"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/world_registry.py"
+      - "scripts/test_world_registry.py"
+      - ".github/workflows/world-registry.yml"
+      - "docs/UNIVERSAL_WORLD_ENGINE.md"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m py_compile scripts/world_registry.py scripts/test_world_registry.py
+      - run: python3 scripts/test_world_registry.py
