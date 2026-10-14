@@ -1,0 +1,93 @@
+{
+  "schema": "agentopia.detroit.sealed-v219",
+  "modules": {
+    "main.js": {
+      "from": "v218",
+      "sha256": "0db1327b5d81bf523a3ab757ff65b18545baf528c4da0650c161f5de05caa551"
+    },
+    "geo-city.js": {
+      "from": "v218",
+      "sha256": "b27c273628388b732c88dea9e8138e89192704535c30c63a7bf361bd18b551c5"
+    },
+    "geo-water.js": {
+      "from": "v218",
+      "sha256": "b1075ff5cad7fd532f321a8f91ee6a6cd2e4440911c99b7e0aca8ee62f9b5600"
+    },
+    "waterfront-land.js": {
+      "from": "v218",
+      "sha256": "4a39541dcd0fe8f112e3cb1c370669810e5d5f5106c6397d52fb8af6a6299c3b"
+    },
+    "city-edits.js": {
+      "from": "v218",
+      "sha256": "b2ed35c94643acbbdf3c859a80f0b20d174876d7cf3ca997378f15d33fdc14a0"
+    },
+    "street-life.js": {
+      "from": "v218",
+      "sha256": "01d83cf163ffea9bb833f046041810cfe63ea46b64734954474468f2643260a2"
+    },
+    "ground-finish.js": {
+      "from": "v218",
+      "sha256": "d056941faa6513a8396849f3913401351b99d7c8b13c676721d99403ffe20982"
+    },
+    "riverfront-features.js": {
+      "from": "v218",
+      "sha256": "bf098edcaa77b3b46678e327a499f849fdec9b20821d0e7287bddc0368cd93a3"
+    },
+    "road-logic.js": {
+      "from": "v218",
+      "sha256": "4e0d41e07e1b1833f1a3be685d7a9361db23a542cd1b374a4071afd4be85d979"
+    },
+    "road-surfaces.js": {
+      "from": "v218",
+      "sha256": "221a907039d2cd6d30933f1e8e59fe512cc21c2a071193248e965a81bcf8230e"
+    },
+    "society-logic.js": {
+      "from": "v217",
+      "sha256": "30897d912d410f996b17eb04660f46f0e6dc46e2024629a9cbbd43eee858bfcc"
+    },
+    "citizens-live.js": {
+      "from": "v217",
+      "sha256": "a464c9ca7b24996199881a687e9419c829fb640b38e26f8ff712e39fef6c320c"
+    },
+    "city-editor-inline.js": {
+      "from": "v217",
+      "sha256": "24d83cfdbef46ea69c6cabd5ddc95ba5257b426d92a7c1042f1e6caea703f8ab"
+    },
+    "era-massing.js": {
+      "from": "v216",
+      "sha256": "ab2188df936277f8ac9c00c87da5f4c31fa46fb368c8eb6ccae325eb8b5bfefe"
+    },
+    "historic-logic.js": {
+      "from": "v216",
+      "sha256": "1891196274be890cd6506784c8f9ae732322940df55286ad5845efcd1cddf0f0"
+    },
+    "city-details.js": {
+      "from": "v211",
+      "sha256": "b013fb9ea80b925472ae577aef3ce3f14352b0ad42b2d04949f7db6280dd8973"
+    },
+    "model-loader.js": {
+      "from": "v211",
+      "sha256": "dfa6c92437ba28d6bd2a4d74d0680a5baacc76b37ccbde6c4e25cff577053b4b"
+    },
+    "geography.js": {
+      "from": "v205",
+      "sha256": "d8d48f2eece919ea830f83d835e0428900603d4d8d00cb9b6f1ebde63d086a4a"
+    },
+    "geo-topology.js": {
+      "from": "v205",
+      "sha256": "c0a94999223b7a6f635b2c7e6106188a7553984eae94d2fa63b847937beb3245"
+    },
+    "materials.js": {
+      "from": "v204",
+      "sha256": "d30fa2849aa32440ff89e14841dc64d1d4503574be27b4d6b95ef9ab79170379"
+    },
+    "sky.js": {
+      "from": "v203",
+      "sha256": "6a10a942a1ef062009b09c620f9423460f205d424ee06d913eb0ec0fec7a5276"
+    },
+    "observer.js": {
+      "from": "v203",
+      "sha256": "50b0a787743f71a2f40fc2182db63f2b421611ff45ced47b6228dd1e21ddb435"
+    }
+  }
+}

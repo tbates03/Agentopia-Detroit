@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agentopia Detroit 2.0.19 | Unified City Boot Repair</title>
+<link rel="stylesheet" href="./src/ui.css?v=209"><link rel="stylesheet" href="./src/unified-city.css?v=217">
+<script type="importmap">{"imports":{"three":"/city-v2/vendor/three.webgpu.js","three/webgpu":"/city-v2/vendor/three.webgpu.js","three/tsl":"/city-v2/vendor/three.tsl.js","three/addons/":"/city-v2/vendor/addons/"}}</script>
+<style>
+/* v218: 3D must occupy the canvas instead of an enormous headline */
+.hero-overlay{opacity:.33;transform:scale(.84);transform-origin:top left;}
+.hero-overlay:hover{opacity:.68;}
+/* v216: keep landmark sight lines unobscured */
+.hero-overlay{max-width:420px!important;pointer-events:none}
+.hero-overlay h1{font-size:clamp(24px,2.4vw,35px)!important;line-height:1.08!important;margin-bottom:8px!important}
+.hero-overlay .subtitle{font-size:11px!important;line-height:1.35!important;max-width:360px}
+.hero-overlay .eyebrow{font-size:10px!important}
+</style></head><body>
+<div id="app"><header class="masthead"><a class="brand" href="/isometric-explorer.html"><span class="brand-symbol">A<span>·</span>D</span><span><strong>AGENTOPIA <em>DETROIT</em></strong><small>THREE.JS / MAPPED STREETS / LIVE SOCIETY · DETROIT 2.0.19</small></span></a><div class="topright"><span class="pill"><i id="link-led"></i><span id="observer-status">Connecting to observer</span></span><a class="outline" href="/isometric-explorer.html">↗ Original v1 viewer</a><button type="button" id="unified-edit">Edit City in 3D</button></div></header>
+<div class="layout"><aside class="leftpane"><div class="section-kicker">CITY TIME MACHINE</div><label for="era" class="control-label">Historical milestone</label><select id="era"></select><div class="era-summary" id="era-summary">Loading historical pack…</div><div class="life-tools"><button type="button" id="live-population">● Show live Agentopia residents</button><button type="button" id="follow-life">Follow a resident in Detroit</button></div><div class="mini-separator"></div><div class="section-kicker">VIEW PRESETS</div><div class="btnstack"><button class="viewbtn active" data-camera="waterfront">◈ Detroit waterfront</button><button class="viewbtn" data-camera="aerial">▦ Aerial district</button><button class="viewbtn" data-camera="guardian">♜ Guardian district</button><button class="viewbtn" data-camera="street">↝ Street-level</button><button class="viewbtn" data-camera="bridges">◇ International bridges</button><button class="viewbtn" data-camera="belle">♣ Belle Isle</button><button class="viewbtn" data-camera="wilson">♣ Ralph Wilson Park</button><button class="viewbtn" data-camera="milliken">⚓ Milliken Harbor</button><button class="viewbtn" data-camera="valade">♧ Valade Park</button><button class="viewbtn" data-camera="landmark">♜ Renaissance Center</button></div><div class="mini-separator"></div><label class="control-label" for="light">Lighting</label><select id="light"><option value="golden">Golden hour</option><option value="day">Afternoon sunlight</option><option value="night">Evening city glow</option></select><label class="control-label" for="quality">Graphics quality</label><select id="quality"><option value="high">Cinematic</option><option value="medium" selected>Balanced</option><option value="low">Efficient</option></select><label class="control-label" for="season">Season</label><select id="season"><option value="summer">Summer</option><option value="autumn">Autumn</option><option value="winter">Winter</option><option value="spring">Spring</option></select><div class="mini-separator"></div><div class="small-print">CITY AUTHORITY</div><p class="disclosure">2024 base footprints come from a Detroit GIS inventory and modern mapped street centerlines and QA-screened mapped Detroit River water polygons. This does NOT constitute a certified 2026 survey. Historical eras require dated archival records; missing records remain unrendered. ONLY 2045 may include future-inspired construction. The world engine is never edited. Modern city coverage is targeted to downtown, international bridge corridors and Belle Isle. Previous historical geometry remains an identified research gap.</p></aside>
+<main class="stage"><canvas id="scene" aria-label="Interactive Detroit city, orbit to explore" tabindex="0"></canvas><div class="hero-overlay"><span class="eyebrow">THE MOTOR CITY · 42.33° N / 83.05° W</span><h1 id="hero-title">Detroit, reimagined<br>in three dimensions.</h1><div class="subtitle" id="scene-disclosure">Real geographic geometry · Read-only simulation</div></div><div id="live-hud"><span id="society-state" data-live="no">CONNECTING TO SOCIETY...</span><span id="live-caption">Real observer activities · street locations inferred where GPS is absent</span></div><div class="renderer-chip" id="renderer-chip">GPU starting…</div><div class="scene-bottom"><div class="scene-key">DRAG <b>Orbit</b> &nbsp;&nbsp; SCROLL <b>Zoom</b> &nbsp;&nbsp; RIGHT DRAG <b>Pan</b> &nbsp;&nbsp; CLICK <b>Inspect</b></div><span id="fps">— FPS</span></div><div class="loading" id="loading"><div class="spinner"></div><h2>Preparing downtown Detroit</h2><p id="loading-sub">Initializing Three.js and rendering backend…</p></div></main>
+<aside class="rightpane"><section id="society-panel"><div class="panel-title">AGENTOPIA · LIVE SOCIETY</div><div id="society-detail">Waiting for /api/snapshot…</div><div id="resident-list" aria-label="Live simulated residents"></div><button id="resident-focus" disabled type="button">Select a resident to follow</button></section><div class="section-kicker">EXPLORER / READ-ONLY</div><h2 id="feature-name">Select a place</h2><p id="feature-desc">Click a landmark to inspect its timeline, design status, and source.</p><div class="info-block"><span>GPU BACKEND</span><strong id="backend">Starting…</strong></div><div class="info-block"><span>CITY DATA</span><strong id="geo-flag">Illustrative scene</strong></div><div class="info-block"><span>SIMULATION HEALTH</span><strong id="health">Not connected</strong></div><div class="info-block"><span>CHECKPOINT</span><strong id="checkpoint">Read-only · no direct checkpoint writes</strong></div><div class="mini-separator"></div><div class="section-kicker">RENDER METRICS</div><div id="metrics">Waiting for GPU…</div><div class="mini-separator"></div><p class="disclosure">Buildings use mapped footprints and approximate recorded heights. Historic reconstructions prior to 2024 are incomplete, not invented. Detroit-side waterfront land guards now share the north-positive GIS projection and a connected source-constrained shoreline guide; they are NOT a surveyed shoreline. Named riverfront park details are small schematic symbols, NOT surveyed park geometries. Façade details are illustrative, NOT measured landmark reconstructions. Landmark pins are location markers, not licensed 3D replicas. Source provenance available in city-geo/data/provenance.json.</p></aside></div><footer><span>AGENTOPIA DETROIT · v2.0.19 ONE DETROIT · SHORELINE + STREETS · OWN YOUR INTELLIGENCE</span><span>Local Three.js modules · PBR materials · © OpenStreetMap contributors · GIS source attribution in documentation</span></footer></div>
+<aside class="editor-drawer" id="city-editor-drawer" hidden aria-label="City Builder inside 3D Detroit">
+  <div class="edit-head"><div><div class="section-kicker">ONE CITY · LOCAL EDITOR</div><h2>Edit Detroit in this scene</h2></div><button id="editor-close" type="button">Close</button></div>
+  <p>No new map page. Features preview in the current Three.js city; official GIS and the AI simulation remain read-only.</p>
+  <div class="edit-buttons"><button id="editor-new" type="button">+ Add feature</button><button id="editor-pick" type="button">Pick on 3D map</button></div>
+  <label for="editor-list">Choose local edit</label><select id="editor-list"></select>
+  <form id="editor-form" onsubmit="return false">
+    <label>Feature name<input name="name" maxlength="90" required></label>
+    <label>Type<select name="type"><option value="landmark">Landmark</option><option value="park">Park</option><option value="shore_dry">Dry land correction</option><option value="shore_wet">Water correction</option></select></label>
+    <div class="edit-grid"><label>Latitude<input type="number" name="lat" step="0.000001"></label><label>Longitude<input type="number" name="lon" step="0.000001"></label></div>
+    <div class="edit-grid"><label>Radius (m)<input type="number" name="radiusM" min="2" max="120" step="1"></label><label>Start year<input type="number" name="start" min="1701" max="2045"></label></div>
+    <label>End year<input type="number" name="end" min="1701" max="2045"></label>
+    <label>Historical or current source<input type="url" name="source" placeholder="https://..."></label>
+    <label>Notes<textarea name="notes" rows="3"></textarea></label>
+    <label><input type="checkbox" name="confirmed"> I verified the location and source</label>
+  </form>
+  <div id="editor-status" aria-live="polite">Choose a local edit or add a feature.</div>
+  <div class="edit-buttons"><button class="primary" id="editor-save" type="button">Apply to this 3D city</button><button id="editor-delete" type="button">Delete selected</button></div>
+  <div class="edit-buttons"><button id="editor-export" type="button">Export edits JSON</button><button id="editor-clear" type="button">Clear local edits</button></div>
+  <label for="editor-import">Import a City Builder JSON file</label><input type="file" id="editor-import" accept=".json,application/json">
+  <p class="notice">Land/water adjustments are local, bounded visual overrides and require confirmation plus a source. Historical eras are not rebuilt from present-day geometry. Citizen positions are inferred from recorded simulation locations, not GPS.</p>
+</aside>
+<script>
+/* v2.0.19: verified module graph, explicit diagnostics, NO automatic safe redirect. */
+(()=>{
+ 'use strict';
+ const overlay=document.getElementById('loading');
+ const title=overlay.querySelector('h2');
+ const status=document.getElementById('loading-sub');
+ const chip=document.getElementById('renderer-chip');
+ const backup=document.createElement('a');
+ backup.href='./safe.html'+location.search;
+ backup.textContent='Open stable v2.0.11 viewer (manual fallback)';
+ backup.style.cssText='display:block;margin:15px auto 0;color:#efca89;text-decoration:underline';
+ overlay.appendChild(backup);
+ const modules=["./src/v219/citizens-live.js", "./src/v219/city-details.js", "./src/v219/city-editor-inline.js", "./src/v219/city-edits.js", "./src/v219/era-massing.js", "./src/v219/geo-city.js", "./src/v219/geo-topology.js", "./src/v219/geo-water.js", "./src/v219/geography.js", "./src/v219/ground-finish.js", "./src/v219/historic-logic.js", "./src/v219/main.js", "./src/v219/materials.js", "./src/v219/model-loader.js", "./src/v219/observer.js", "./src/v219/riverfront-features.js", "./src/v219/road-logic.js", "./src/v219/road-surfaces.js", "./src/v219/sky.js", "./src/v219/society-logic.js", "./src/v219/street-life.js", "./src/v219/waterfront-land.js"];
+ const external=[
+  '/city-v2/vendor/three.webgpu.js',
+  '/city-v2/vendor/three.core.js',
+  '/city-v2/vendor/three.tsl.js',
+  '/city-v2/vendor/addons/controls/OrbitControls.js',
+  '/city-v2/vendor/addons/utils/BufferGeometryUtils.js',
+  '/city-v2/vendor/addons/loaders/GLTFLoader.js'
+ ];
+ let ready=false,fail=false;
+ let watchdog;
+ const setStatus=msg=>{status.textContent=msg;};
+ const report=(msg,err)=>{
+  if(ready||fail)return;
+  fail=true;clearTimeout(watchdog);
+  overlay.classList.remove('hidden');
+  title.textContent='City loading error - exact dependency shown';
+  setStatus(msg+'\n'+String(err?.stack||err||'')+'\nNo GIS or simulation files were changed.');
+  chip.textContent='MODULE LOAD ERROR';
+  console.error('[Agentopia 2.0.19]',msg,err);
+ };
+ window.addEventListener('error',e=>report('Browser script error',e.error||e.message));
+ window.addEventListener('unhandledrejection',e=>report('Unhandled promise rejection',e.reason));
+ document.addEventListener('agentopia:stage',e=>{if(!ready&&!fail)setStatus(e.detail.stage)});
+ document.addEventListener('agentopia:ready',()=>{ready=true;clearTimeout(watchdog);});
+ document.addEventListener('agentopia:fatal',e=>report('3D viewer runtime error',e.detail?.error));
+ watchdog=setTimeout(()=>report('3D initialization timeout after 120s; see last step above'),120000);
+ async function verifyUrl(path){
+  const url=path+(path.includes('?')?'&':'?')+'r=219';
+  let response;
+  try{response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(16000)});}
+  catch(err){throw Error('Cannot GET '+path+': '+String(err));}
+  if(!response.ok)throw Error('HTTP '+response.status+' for '+path);
+  const mime=(response.headers.get('content-type')||'').toLowerCase();
+  if(!(mime.includes('javascript')||mime.includes('ecmascript')||mime.includes('text/plain')))
+    throw Error('Invalid JavaScript MIME '+JSON.stringify(mime)+' for '+path);
+  const data=await response.text();
+  if(data.trim().startsWith('<!doctype')||data.trim().startsWith('<html'))
+    throw Error('Server returned HTML instead of JavaScript at '+path);
+ }
+ (async()=>{
+  try{
+   const paths=[...modules,...external];
+   for(let i=0;i<paths.length;i++){
+    if(fail)return;
+    setStatus('Checking local JavaScript '+(i+1)+'/'+paths.length+': '+paths[i]);
+    await verifyUrl(paths[i]);
+   }
+   if(fail)return;
+   setStatus('All '+paths.length+' JavaScript endpoints served correctly. Loading unified Detroit...');
+   await import('./src/v219/main.js?v=219');
+  }catch(err){report('Dependency verification or module import failed',err)}
+ })();
+})();
+</script>
+</body></html>

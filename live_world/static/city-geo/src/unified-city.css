@@ -1,0 +1,44 @@
+/* Agentopia Detroit 2.0.17: one integrated 3D city, live simulation, local editor. */
+:root{--gold:#e6bd7c;--mint:#69e9bf;--panel:#111e2c;--rim:rgba(205,228,241,.16)}
+.masthead{background:linear-gradient(90deg,#0b1724,#15283b)!important;border-bottom:1px solid rgba(111,170,190,.24)}
+.masthead .topright{display:flex;align-items:center;gap:8px}
+.masthead .topright button,.unified-action{padding:10px 14px;background:#243e52;color:#e9f1f5;border:1px solid rgba(161,206,226,.33);border-radius:8px;cursor:pointer;font-weight:700}
+.masthead .topright button:hover,.unified-action:hover{background:#345d72}
+.stage{position:relative;background:#7494a1!important}
+.hero-overlay{max-width:350px!important;opacity:.55!important;pointer-events:none;transition:opacity .6s ease}
+.hero-overlay h1{font-size:clamp(23px,2.3vw,34px)!important;line-height:1.08!important;text-shadow:0 2px 12px rgba(0,0,0,.65)}
+.hero-overlay .eyebrow{font-size:10px!important}
+.hero-overlay .subtitle{font-size:11px!important;max-width:330px;color:#f4f9f9!important;text-shadow:0 1px 6px rgba(0,0,0,.8)}
+#live-hud{position:absolute;top:20px;right:20px;z-index:8;display:flex;flex-direction:column;align-items:flex-end;gap:7px;pointer-events:none}
+#society-state{color:#f2fffb;background:rgba(6,23,32,.89);border:1px solid rgba(105,233,191,.55);padding:9px 14px;border-radius:22px;font:700 11px system-ui;letter-spacing:.1em}
+#society-state[data-live=yes]::before{content:'●';color:var(--mint);margin-right:8px;animation:pulse 2s infinite}
+#society-state[data-live=no]{border-color:#7c8994;color:#c9cfd2}
+#live-caption{font:11px system-ui;max-width:220px;padding:7px 10px;background:rgba(8,24,32,.74);color:#e4eced;border-radius:8px;text-align:right}
+@keyframes pulse{50%{opacity:.35}}
+.life-tools{display:grid;gap:8px;margin:14px 0}.life-tools button{border:1px solid #4d8c87;border-radius:8px;background:#1c453f;color:#defcf0;font-weight:700;padding:10px;cursor:pointer}
+#society-panel{padding:14px 12px;margin:12px 0 18px;background:#102936;border:1px solid rgba(105,233,191,.26);border-radius:12px}
+#society-panel .panel-title{color:#f1c57e;text-transform:uppercase;letter-spacing:.17em;font:800 10px system-ui}
+#society-detail{color:#d3e4ed;font:12px/1.5 system-ui;margin:8px 0 12px}
+#resident-list{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.resident-row{width:100%;border:1px solid rgba(178,223,229,.14);border-radius:9px;background:#172f3c;color:#f2f4f5;padding:8px 10px;text-align:left;cursor:pointer}
+.resident-row:hover{background:#235064}.resident-row strong{display:block;font:700 12px system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.resident-row small{display:block;color:#b9cfda;margin-top:3px;font:11px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#resident-focus{background:#d5ad71;color:#101e28;border:0;border-radius:7px;font-weight:800;padding:8px 12px;margin:12px 0 0;width:100%;cursor:pointer}
+#resident-focus:disabled{opacity:.4;cursor:default}
+.editor-drawer[hidden]{display:none!important}.editor-drawer{position:fixed;right:0;top:0;z-index:100;bottom:0;width:min(410px,94vw);background:linear-gradient(#102638,#0b1724);color:#f0f4f5;box-shadow:-18px 0 60px #000a;border-left:1px solid #67889b;overflow-y:auto;padding:20px 22px;font:13px/1.5 system-ui}
+.editor-drawer h2{font-size:22px;margin:4px 0 8px;color:#f7d19a}.editor-drawer p{font:12px/1.5 system-ui;color:#c2d5de}
+.editor-drawer .edit-head{display:flex;align-items:start;justify-content:space-between;gap:10px}
+.editor-drawer button{border:1px solid #527e91;border-radius:7px;background:#1d3b4b;color:#f1f8fb;padding:9px 11px;cursor:pointer;font-weight:700}
+.editor-drawer button:hover{background:#2f6072}.editor-drawer button:disabled{opacity:.4}
+.editor-drawer input:not([type=checkbox]),.editor-drawer select,.editor-drawer textarea{border:1px solid #45697a;border-radius:7px;color:#f0f4f5;background:#0e2231;padding:9px;width:100%;min-width:0;box-sizing:border-box;font:13px system-ui}
+.editor-drawer label{display:block;color:#cddfe5;margin-top:12px;font:700 12px/1.5 system-ui}
+.editor-drawer label input[type=checkbox]{width:auto;margin-right:6px}
+.editor-drawer .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.editor-drawer .edit-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.editor-drawer .edit-buttons .primary{background:#205b53;border-color:#58a293}
+#editor-status{min-height:48px;background:#0b1b29;border:1px solid #315364;border-radius:8px;padding:9px;color:#d4e8e8;margin:12px 0}
+#editor-import{font-size:11px!important}
+#city-editor-drawer .notice{font-size:11px;color:#c4dbe6;background:#162b38;padding:9px;border-left:3px solid var(--gold)}
+.rightpane{overflow-y:auto}.leftpane{overflow-y:auto}
+#geo-flag,#metrics{overflow-wrap:anywhere}
+@media(max-width:1100px){.hero-overlay{opacity:.3!important}.masthead .topright .outline{display:none}}
