@@ -1199,6 +1199,16 @@ class AppHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok":False,"error":str(exc)}, 500)
             return
         # AGENTOPIA_FAMILY_API_V175_END
+        if parsed.path == "/api/world-league":
+            try:
+                scripts_path = str(self.app.reader.root / "scripts")
+                if scripts_path not in sys.path:
+                    sys.path.insert(0, scripts_path)
+                from world_league_live import league_snapshot
+                self.send_json(league_snapshot(self.app.reader.root))
+            except Exception as exc:
+                self.send_json({"ok": False, "error": str(exc)}, 500)
+            return
         if parsed.path == "/api/snapshot":
             requested = query.get("run", [None])[0]
             try:
