@@ -7,6 +7,8 @@ on:
       - "LEADERBOARD.md"
       - "scripts/build_leaderboard.py"
       - "scripts/export_world_beacon.py"
+      - "scripts/world_league_live.py"
+      - "tests/test_world_league_live.py"
       - "scripts/detroit_world_context.py"
       - "scripts/detroit_world_context_daemon.py"
       - "scripts/detroit_mobility_time.py"
@@ -39,7 +41,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Validate Python
-        run: python -m py_compile scripts/build_leaderboard.py scripts/export_world_beacon.py scripts/detroit_world_context.py scripts/detroit_world_context_daemon.py scripts/detroit_mobility_time.py live_world/server.py
+        run: python -m py_compile scripts/build_leaderboard.py scripts/export_world_beacon.py scripts/world_league_live.py tests/test_world_league_live.py scripts/detroit_world_context.py scripts/detroit_world_context_daemon.py scripts/detroit_mobility_time.py live_world/server.py
       - name: Validate submission JSON
         run: |
           python - <<'PY'
@@ -57,3 +59,6 @@ jobs:
           PY
       - name: Check generated leaderboard
         run: python scripts/build_leaderboard.py --check
+
+      - name: Test live league checkpoint sync
+        run: python -m unittest discover -s tests -p test_world_league_live.py -v
