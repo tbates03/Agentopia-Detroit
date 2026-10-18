@@ -34,14 +34,14 @@
     <article class="card">
       <div class="sub">Founding city</div><div class="kpi">Detroit</div>
       <p>Agentopia Detroit is World #1 in the World League.</p>
-      <span class="pill">4 committed weeks</span><span class="pill">Month Builder</span>
+      <span id="leagueCommitted" class="pill">Checking checkpoint…</span><span id="leagueMilestone" class="pill">—</span>
     </article>
     <article class="card">
       <div class="sub">Population snapshot</div><div id="populationTotal" class="kpi">202</div>
       <p>Current Detroit research snapshot with <strong id="populationActive">64</strong> active citizens.</p>
     </article>
     <article class="card">
-      <div class="sub">Leaderboard scale</div><div class="kpi">Weeks</div>
+      <div class="sub">Leaderboard scale</div><div id="leagueScale" class="kpi">—</div>
       <p>As participation grows: weeks → months → years → decades.</p>
     </article>
 
@@ -77,6 +77,15 @@
       <span class="pill">Jobs</span><span class="pill">Skilled trades</span><span class="pill">Business</span><span class="pill">Manufacturing</span><span class="pill">Agriculture</span><span class="pill">Healthcare</span><span class="pill">Education</span><span class="pill">Government</span><span class="pill">Finance</span><span class="pill">Logistics</span><span class="pill">Hospitality</span><span class="pill">Arts</span>
     </article>
 
+    <article class="card full">
+      <h2>World League · Live Standings</h2>
+      <p id="leagueStatus" aria-live="polite">Reading Detroit’s committed checkpoint (no manual editing required)…</p>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left">
+        <thead><tr><th>Rank</th><th>World</th><th>Committed</th><th>Checkpoint</th><th>Milestone</th><th>Population</th><th>Source</th></tr></thead>
+        <tbody id="leagueRows"><tr><td colspan="7">Waiting for local World League API…</td></tr></tbody>
+      </table></div>
+      <p><small>Only completed simulation checkpoints count. Other participating worlds display their last published beacon; they are not claimed to be live.</small></p>
+    </article>
     <article class="card full">
       <h2>Live World-Context Engine + Research Roadmap</h2>
       <div class="roadmap">
@@ -157,8 +166,58 @@
         : "No enabled validated calendar observance falls in this simulation week.";
     }catch(_e){}
   }
+  async function refreshLeague(){
+    const status = byId("leagueStatus");
+    try{
+      const response = await fetch("/api/world-league", {cache:"no-store"});
+      if(!response.ok) throw new Error("HTTP "+response.status);
+      const payload = await response.json();
+      if(!payload.ok) throw new Error(payload.warning || "No valid league entries");
+      const tbody = byId("leagueRows");
+      tbody.replaceChildren();
+      const trCell = (tr,value) => {
+        const td=document.createElement("td");
+        td.style.padding="10px 12px";
+        td.style.borderBottom="1px solid var(--line)";
+        td.textContent=String(value ?? "—");
+        tr.appendChild(td);
+        return td;
+      };
+      for(const w of payload.worlds){
+        const tr=document.createElement("tr");
+        trCell(tr,w.rank);
+        const world=trCell(tr,w.world_name);
+        // Only allow a safe GitHub repository URL as an outbound link.
+        if(typeof w.repository==="string" && /^https:\/\/github\.com\/[a-z0-9_.-]+\/[a-z0-9_.-]+\/?$/i.test(w.repository)){
+          const a=document.createElement("a");a.href=w.repository;a.target="_blank";a.rel="noopener";
+          a.textContent=w.world_name;world.textContent="";world.appendChild(a);
+        }
+        trCell(tr,w.display_progress);
+        trCell(tr,w.checkpoint_year == null ? "—" : "Y"+w.checkpoint_year+" W"+w.checkpoint_week);
+        trCell(tr,w.milestone);
+        trCell(tr,w.population?.total ?? "—");
+        trCell(tr,w.source==="live_committed_checkpoint" ? "LIVE LOCAL CHECKPOINT" : "PUBLISHED BEACON");
+        tbody.appendChild(tr);
+      }
+      byId("leagueScale").textContent = payload.scale.charAt(0).toUpperCase()+payload.scale.slice(1);
+      const detroit = payload.worlds.find(x=>x.world_id==="detroit");
+      if(detroit){
+        byId("leagueCommitted").textContent=detroit.weeks_completed+" committed weeks";
+        byId("leagueMilestone").textContent=detroit.milestone;
+        if(detroit.population?.total != null) byId("populationTotal").textContent=detroit.population.total;
+        if(detroit.population?.active != null) byId("populationActive").textContent=detroit.population.active;
+      }
+      status.textContent=payload.live_checkpoint_available
+        ? "Detroit: verified local checkpoint · refreshed "+new Date().toLocaleTimeString()+" · other worlds: published snapshots"
+        : "Live checkpoint unavailable; showing published submissions (may be stale). "+(payload.warning||"");
+    }catch(err){
+      status.textContent="World League live update unavailable: "+err.message+" · Last displayed values may be stale.";
+    }
+  }
   refreshWorldContext();
+  refreshLeague();
   setInterval(refreshWorldContext, 5000);
+  setInterval(refreshLeague, 5000);
 })();
 </script>
 
