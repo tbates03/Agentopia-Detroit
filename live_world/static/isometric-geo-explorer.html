@@ -2,276 +2,118 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07111d">
-  <title>Agentopia Detroit | Isometric Explorer + Mapped 3D City</title>
+  <title>Agentopia Detroit | Classic Dashboard and Optional 3D City</title>
   <style>
-    :root { color-scheme: dark; font: 14px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    :root { color-scheme: dark; font: 14px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; padding: 0; margin: 0; background: #08111b; }
-    #original-explorer { display: block; border: 0; width: 100vw; height: 100dvh; }
-    #hybrid-notice { position: fixed; z-index: 2147483647; left: 16px; bottom: 16px;
-      max-width: min(560px,calc(100vw - 32px)); padding: 13px 16px;
-      background: #121f2c; border: 1px solid #d2a35e; border-radius: 8px;
-      color: #f7e4c2; box-shadow: 0 8px 30px #0009; line-height: 1.5; }
-    #hybrid-notice[hidden] { display: none; }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #07111d; color: #eaf1fa; }
+    body { display: flex; flex-direction: column; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #0e2339; border-bottom: 1px solid #28445a; padding: 9px 16px; min-height: 60px; z-index: 2; }
+    .brand { display: flex; flex-direction: column; gap: 2px; min-width: 178px; flex: 1 1 auto; }
+    .brand strong { font-size: 14px; letter-spacing: .04em; }
+    .brand small { font-size: 11px; color: #acc2d0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .actions button, .actions a { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 37px; border: 1px solid #507087; border-radius: 7px; padding: 7px 12px; background: #193a53; color: #ecf5fb; font: 600 12px system-ui, sans-serif; text-decoration: none; cursor: pointer; }
+    .actions button:hover, .actions a:hover { border-color: #f9ce62; }
+    .actions button[aria-pressed="true"] { background: #ffcb05; border-color: #ffcb05; color: #00274c; }
+    .stage { position: relative; flex: 1 1 auto; min-height: 0; }
+    .stage iframe { display: block; width: 100%; height: 100%; border: 0; background: #07111d; }
+    .stage iframe[hidden] { display: none !important; }
+    #status { position: absolute; z-index: 1; bottom: 16px; left: 16px; max-width: calc(100% - 32px); padding: 10px 14px; color: #ffdd99; background: #132b3e; border: 1px solid #a87937; border-radius: 8px; box-shadow: 0 4px 18px #0006; }
+    #status[hidden] { display: none; }
+    @media (max-width: 750px) {
+      .toolbar { gap: 7px; padding: 7px 10px; }
+      .brand { min-width: auto; }
+      .brand strong { font-size: 12px; }
+      .brand small { font-size: 10px; }
+      .actions button, .actions a { padding: 6px 8px; min-height: 32px; font-size: 11px; }
+    }
   </style>
 </head>
 <body>
-  <!-- The entire existing isometric interface stays live and unmodified. -->
-  <iframe id="original-explorer" title="Original Agentopia Detroit Isometric Explorer interface"></iframe>
-  <div id="hybrid-notice" role="status" aria-live="polite" hidden></div>
+  <!-- IMPORTANT: the original observer is the DEFAULT, not a map overlay. -->
+  <header class="toolbar">
+    <div class="brand">
+      <strong>AGENTOPIA DETROIT</strong>
+      <small>Classic dashboard first. Geographic 3D is optional.</small>
+    </div>
+    <nav class="actions" aria-label="Agentopia displays">
+      <button id="classic-button" type="button" aria-pressed="true">Classic Dashboard</button>
+      <button id="map-button" type="button" aria-pressed="false">3D Detroit Map</button>
+      <a id="original-link" href="/" target="_blank" rel="noopener">Open Classic Separately</a>
+      <a id="iso-link" href="/isometric-explorer.html?era=2045" target="_blank" rel="noopener">Isometric Explorer</a>
+    </nav>
+  </header>
+  <main class="stage" aria-label="Agentopia view">
+    <!-- The untouched observer owns all tabs, buttons, panels and simulation controls. -->
+    <iframe id="classic" src="/" title="Original Agentopia Classic: Neighborhood, Buildings, Relationships, and all society panels"></iframe>
+    <!-- Do not start the GPU-heavy 3D viewer until the user explicitly chooses it. -->
+    <iframe id="geo" title="Optional mapped 3D Detroit city" hidden></iframe>
+    <div id="status" role="status" aria-live="polite" hidden></div>
+  </main>
   <script>
   (() => {
-    'use strict';
-    // This is a new, read-only presentation page. It does not write simulation state.
-    // Both embedded pages are served by the same local observer (127.0.0.1:8766).
-    const original = document.getElementById('original-explorer');
-    const notice = document.getElementById('hybrid-notice');
-    const parameters = new URLSearchParams(location.search);
-    const numericYear = (value) => {
-      const s = String(value == null ? '' : value).trim();
-      if (!/^\d{4}$/.test(s)) return null;
-      const n = Number(s);
-      return n >= 1701 && n <= 2045 ? n : null;
-    };
-    let currentYear = numericYear(parameters.get('era')) || 2045;
-    let originalCanvas = null;
-    let mappedFrame = null;
-    let originalCanvasOpacity = '';
-    let originalCanvasPointerEvents = '';
-    let originalParentPosition = '';
-    let modifiedParent = null;
-    let sourceDocument = null;
-    let selectedPreset = '';
-    let initialized = false;
-    let sourceLoaded = false;
-    let rejected = false;
-    const startedAt = Date.now();
-
-    const say = (message) => {
-      notice.textContent = message;
-      notice.hidden = !message;
-      if (message) console.warn('[Agentopia Hybrid Explorer]', message);
-    };
-    const explorerUrl = new URL('/isometric-explorer.html', location.origin);
-    explorerUrl.searchParams.set('era', String(currentYear));
-    original.src = explorerUrl.pathname + explorerUrl.search;
-
-    const geoUrl = () => {
-      const url = new URL('/city-geo/index.html', location.origin);
-      url.searchParams.set('era', String(currentYear));
-      url.searchParams.set('gpu', 'webgl2');
-      url.searchParams.set('v', '219');
-      return url.pathname + url.search;
-    };
-
-    function pickMapCanvas(doc) {
-      // Prefer the actual large rendering surface over HUD charts or sparklines.
-      const canvases = [...doc.querySelectorAll('canvas')];
-      const viewport = doc.defaultView;
-      const candidates = canvases.map((el) => {
-        const rect = el.getBoundingClientRect();
-        const style = viewport.getComputedStyle(el);
-        const excludes = /chart|spark|graph|mini-map|thumbnail|legend/i.test((el.id || '') + ' ' + (el.className || ''));
-        const score = excludes || style.display === 'none' || style.visibility === 'hidden'
-          ? 0 : rect.width * rect.height;
-        return { el, rect, score };
-      }).filter(item => item.rect.width >= 200 && item.rect.height >= 170 && item.score > 0);
-      candidates.sort((a, b) => b.score - a.score);
-      if (candidates.length) return candidates[0].el;
-      // For a DOM/SVG-backed map, select its dedicated viewport (never a whole page).
-      const selectors = [
-        '#map-canvas', '#city-canvas', '#scene', '#map-viewport',
-        '#world-viewport', '#map-container', '#mapView',
-        '.map-viewport', '.map-container', '.city-viewport',
-        '[data-map-viewport]', '[data-role="map"]'
-      ];
-      for (const selector of selectors) {
-        const el = doc.querySelector(selector);
-        if (!el || el === doc.body || el === doc.documentElement) continue;
-        const rect = el.getBoundingClientRect();
-        if (rect.width >= 200 && rect.height >= 170) return el;
+    "use strict";
+    const classic = document.getElementById("classic");
+    const geo = document.getElementById("geo");
+    const classicButton = document.getElementById("classic-button");
+    const mapButton = document.getElementById("map-button");
+    const isoLink = document.getElementById("iso-link");
+    const status = document.getElementById("status");
+    const params = new URLSearchParams(location.search);
+    const era = /^\d{4}$/.test(params.get("era") || "") && Number(params.get("era")) >= 1701 && Number(params.get("era")) <= 2045 ? params.get("era") : "2045";
+    isoLink.href = "/isometric-explorer.html?era=" + encodeURIComponent(era);
+    const mapUrl = "/city-geo/index.html?era=" + encodeURIComponent(era) + "&gpu=webgl2&v=219";
+    let active = "classic";
+    function warn(message) { status.textContent = message || ""; status.hidden = !message; }
+    function select(mode) {
+      active = mode;
+      const isMap = mode === "3d";
+      classic.hidden = isMap;
+      geo.hidden = !isMap;
+      classicButton.setAttribute("aria-pressed", String(!isMap));
+      mapButton.setAttribute("aria-pressed", String(isMap));
+      warn("");
+      if (isMap && !geo.getAttribute("src")) geo.src = mapUrl;
+      if (!isMap && geo.getAttribute("src")) {
+        // Release 3D GPU work on return. Classic state stays in its own live iframe.
+        geo.removeAttribute("src");
+        geo.src = "about:blank";
+        geo.removeAttribute("src");
       }
-      return null;
+      const url = new URL(location.href);
+      if (isMap) url.searchParams.set("view", "3d");
+      else url.searchParams.delete("view");
+      history.replaceState(null, "", url.pathname + url.search + url.hash);
     }
-
-    function parentSpaceRect(target, host) {
-      const a = target.getBoundingClientRect();
-      const b = host.getBoundingClientRect();
-      const scaleX = host.offsetWidth ? b.width / host.offsetWidth : 1;
-      const scaleY = host.offsetHeight ? b.height / host.offsetHeight : 1;
-      const sx = scaleX > 0 ? scaleX : 1;
-      const sy = scaleY > 0 ? scaleY : 1;
-      return {
-        left: (a.left - b.left) / sx + host.scrollLeft - host.clientLeft,
-        top: (a.top - b.top) / sy + host.scrollTop - host.clientTop,
-        width: a.width / sx,
-        height: a.height / sy
-      };
-    }
-
-    function sizeMap() {
-      if (!mappedFrame || !originalCanvas || !modifiedParent) return;
-      const area = parentSpaceRect(originalCanvas, modifiedParent);
-      if (area.width < 150 || area.height < 120) return;
-      mappedFrame.style.left = `${area.left}px`;
-      mappedFrame.style.top = `${area.top}px`;
-      mappedFrame.style.width = `${area.width}px`;
-      mappedFrame.style.height = `${area.height}px`;
-    }
-
-    function restoreMap() {
-      if (mappedFrame) mappedFrame.remove();
-      if (originalCanvas) {
-        originalCanvas.style.opacity = originalCanvasOpacity;
-        originalCanvas.style.pointerEvents = originalCanvasPointerEvents;
-      }
-      if (modifiedParent) modifiedParent.style.position = originalParentPosition;
-      mappedFrame = null;
-      originalCanvas = null;
-      modifiedParent = null;
-    }
-
-    function injectMapOnlyStyling() {
-      if (!mappedFrame) return;
-      let doc;
-      try { doc = mappedFrame.contentDocument; } catch { return; }
-      if (!doc || !doc.getElementById('scene')) {
-        restoreMap();
-        say('The mapped Detroit viewer is unavailable. The original map has been restored. Check /city-geo/index.html on this Mac.');
-        rejected = true;
-        return;
-      }
-      if (doc.getElementById('hybrid-map-only')) return;
-      const style = doc.createElement('style');
-      style.id = 'hybrid-map-only';
-      style.textContent = `
-        html, body, #app { height: 100%!important; min-height:0!important;
-          margin:0!important; overflow:hidden!important; }
-        #app { width:100%!important; height:100dvh!important; }
-        .layout { display:block!important; height:100%!important; min-height:0!important;
-          width:100%!important; grid-template-columns:none!important; }
-        .stage { display:block!important; position:relative!important; width:100%!important;
-          height:100%!important; min-height:0!important; overflow:hidden!important; }
-        #scene { width:100%!important; height:100%!important; min-height:0!important;
-          display:block!important; touch-action:none!important; }
-        .masthead, .leftpane, .rightpane, footer, .hero-overlay, #live-hud,
-        .renderer-chip, .scene-bottom, .editor-drawer { display:none!important; }
-        #loading { z-index:20!important; }
-      `;
-      doc.head.appendChild(style);
-      mappedFrame.style.visibility = 'visible';
-      try { mappedFrame.contentWindow.dispatchEvent(new Event('resize')); } catch { /* no-op */ }
-      syncControls();
-    }
-
-    function mappedSelect(id, value) {
-      if (!mappedFrame || value == null) return;
-      const doc = mappedFrame.contentDocument;
-      const select = doc?.getElementById(id);
-      if (!select || !select.matches('select') || ![...select.options].some(o => o.value === String(value))) return;
-      if (select.value !== String(value)) {
-        select.value = String(value);
-        select.dispatchEvent(new Event('change', { bubbles:true }));
-      }
-    }
-
-    function sourceYear(doc) {
-      const control = doc.querySelector('select#era,select[name="era"],input[name="era"]');
-      const fromControl = control ? numericYear(control.value) : null;
-      if (fromControl) return fromControl;
-      try { return numericYear(new URL(original.contentWindow.location.href).searchParams.get('era')); }
-      catch { return null; }
-    }
-
-    function syncControls() {
-      if (!mappedFrame || !sourceDocument) return;
-      const nextYear = sourceYear(sourceDocument);
-      if (nextYear && nextYear !== currentYear) {
-        currentYear = nextYear;
-        const here = new URL(location.href);
-        here.searchParams.set('era', String(currentYear));
-        history.replaceState(null, '', here.pathname + here.search + here.hash);
-      }
-      mappedSelect('era', currentYear);
-      for (const id of ['light','quality','season']) {
-        const value = sourceDocument.getElementById(id)?.value;
-        if (value != null) mappedSelect(id, value);
-      }
-    }
-
-    function mountMap(target) {
-      if (rejected || !target?.parentElement) return;
-      restoreMap();
-      originalCanvas = target;
-      originalCanvasOpacity = target.style.opacity;
-      originalCanvasPointerEvents = target.style.pointerEvents;
-      modifiedParent = target.parentElement;
-      originalParentPosition = modifiedParent.style.position;
-      if (sourceDocument.defaultView.getComputedStyle(modifiedParent).position === 'static') {
-        modifiedParent.style.position = 'relative';
-      }
-      mappedFrame = sourceDocument.createElement('iframe');
-      mappedFrame.id = 'agentopia-geographic-map';
-      mappedFrame.title = 'Agentopia Detroit mapped 3D city, v2.0.19';
-      mappedFrame.setAttribute('aria-label','Mapped 3D Detroit, replaces only the isometric map');
-      mappedFrame.setAttribute('referrerpolicy','no-referrer');
-      mappedFrame.style.cssText = 'position:absolute;display:block;border:0;margin:0;padding:0;z-index:0;pointer-events:auto;background:#152b3d;min-height:0;min-width:0;visibility:hidden;';
-      // Insert immediately after the original renderer: existing sibling HUD/panels stay in front.
-      target.insertAdjacentElement('afterend',mappedFrame);
-      target.style.opacity = '0';
-      target.style.pointerEvents = 'none';
-      mappedFrame.addEventListener('load',injectMapOnlyStyling);
-      sizeMap();
-      mappedFrame.src = geoUrl();
-      say('');
-      initialized = true;
-    }
-
-    function wireSource(doc) {
-      if (sourceDocument === doc) return;
-      sourceDocument = doc;
-      doc.addEventListener('change', e => {
-        const control = e.target;
-        if (control?.matches?.('select#era,select[name="era"],input[name="era"],#light,#quality,#season')) {
-          queueMicrotask(syncControls);
+    classicButton.addEventListener("click", () => select("classic"));
+    mapButton.addEventListener("click", () => select("3d"));
+    classic.addEventListener("load", () => {
+      try {
+        const d = classic.contentDocument;
+        if (!d || !d.querySelector('.view-tabs [data-view="map"]') || !d.querySelector('[data-view="buildings"]')) {
+          if (active === "classic") warn("The original classic dashboard did not expose its usual tabs. Open http://127.0.0.1:8766/ directly.");
         }
-      },true);
-      doc.addEventListener('click',e => {
-        const button = e.target?.closest?.('[data-camera]');
-        if (!button || !mappedFrame) return;
-        const name = button.getAttribute('data-camera');
-        if (!name || name === selectedPreset) return;
-        selectedPreset = name;
-        const mapped = mappedFrame.contentDocument?.querySelectorAll('[data-camera]') || [];
-        for (const item of mapped) if (item.getAttribute('data-camera') === name) { item.click(); break; }
-      },true);
-    }
-
-    original.addEventListener('load',() => {
-      sourceLoaded = true;
-      restoreMap();
-      sourceDocument = null;
-      rejected = false;
-      initialized = false;
-    });
-
-    // Original explorer can create its canvas asynchronously, so observe readiness without
-    // overwriting its source files, render code, simulation processes, or map data.
-    setInterval(() => {
-      let doc;
-      try { doc = original.contentDocument; } catch { doc = null; }
-      if (!doc || !doc.body) return;
-      wireSource(doc);
-      const target = pickMapCanvas(doc);
-      if (target && (!mappedFrame || !mappedFrame.isConnected || originalCanvas !== target)) mountMap(target);
-      if (mappedFrame?.isConnected) { sizeMap(); syncControls(); }
-      else if (!initialized && !rejected && Date.now()-startedAt > 12000) {
-        say('Could not locate the original Explorer map viewport. The original interface is unchanged. Confirm /isometric-explorer.html renders on this Mac.');
-        rejected = true;
+      } catch (_) {
+        if (active === "classic") warn("The classic dashboard is not accessible inside this view; open http://127.0.0.1:8766/ directly.");
       }
-    }, 650);
+    });
+    geo.addEventListener("load", () => {
+      if (active !== "3d") return;
+      try {
+        if (!geo.contentDocument?.getElementById("scene")) {
+          warn("The 3D viewer is unavailable. Choose Classic Dashboard to return to your original controls.");
+        }
+      } catch (_) { warn("The 3D viewer could not be inspected; choose Classic Dashboard to return."); }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && active === "3d") select("classic");
+    });
+    // The old page used to auto-overlay the 3D map. Do not do that here.
+    // A bookmarked ?era=2045 MUST still open the complete classic observer.
+    if (params.get("view") === "3d") select("3d");
   })();
   </script>
 </body>
