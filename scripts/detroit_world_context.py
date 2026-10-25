@@ -194,6 +194,10 @@ def week_dates(year: int, week: int) -> list[date]:
         monday = date.fromisocalendar(year, week, 1)
     except ValueError:
         monday = date(year, 1, 1) + timedelta(days=max(0, (week - 1) * 7))
+    # AGENTOPIA_YEAR_9999_CALENDAR_GUARD_V1
+    # Avoid Python date overflow when ISO week 52 reaches year 10000.
+    if year == 9999 and monday > date.max - timedelta(days=6):
+        monday = date.max - timedelta(days=6)
     return [monday + timedelta(days=i) for i in range(7)]
 
 
