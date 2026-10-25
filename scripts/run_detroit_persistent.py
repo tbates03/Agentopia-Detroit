@@ -96,7 +96,7 @@ year = int(cp.get("year", start)) if isinstance(cp, dict) else start
 # LLM-heavy activity days per week.
 time_cfg["n_week"] = 52
 time_cfg["n_day"] = 5
-time_cfg["n_year"] = max(int(time_cfg.get("n_year", 10)), year - start + 1000, 1_000_000)
+time_cfg["n_year"] = max(1, 9999 - start + 1)  # Year 9999 inclusive
 
 # Reward history must divide the 52-week Detroit year cleanly.
 reward_cfg = world.setdefault("reward", {})
@@ -449,6 +449,15 @@ except Exception as _mobility_error:
     print(f"[mobility] WARNING: sidecar initialization failed: {_mobility_error}")
 # AGENTOPIA_MOBILITY_RUNTIME_V174_END
 
+# AGENTOPIA_YEAR_END_RECOVERY_V1
+import agentopia_year_end_recovery as _agentopia_year_end_recovery
+_agentopia_year_end_recovery.install(PersistentDetroitWorld, ROOT, WORLD)
+# /AGENTOPIA_YEAR_END_RECOVERY_V1
+# AGENTOPIA_YEAR_9999_GUARD_V1
+import agentopia_year_9999_guard as _agentopia_9999
+_agentopia_9999.install(PersistentDetroitWorld, ROOT, WORLD)
+# /AGENTOPIA_YEAR_9999_GUARD_V1
+
 w = PersistentDetroitWorld(parallel=True, no_context_engineering=False, no_history=False)
 atexit.register(flush_all_caches)
 _flushing = False
@@ -474,5 +483,11 @@ except Exception: pass
 
 # Exit code 75 is an intentional year-boundary recycle request. The persistent
 # service wrapper immediately starts the next year from the committed checkpoint.
+# AGENTOPIA_YEAR_9999_TERMINAL_PARK_V1
+if _cycle_result == "horizon_complete":
+    print("[YEAR_9999] Horizon complete; parked in supervised heartbeat mode.", flush=True)
+    while True:
+        _agentopia_hb_time.sleep(60)
+
 if _cycle_result == "year_complete":
     raise SystemExit(75)
