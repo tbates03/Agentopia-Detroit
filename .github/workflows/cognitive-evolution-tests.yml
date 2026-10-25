@@ -1,0 +1,19 @@
+name: cognitive-evolution-tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/detroit_cognitive_memory.py'
+      - 'scripts/detroit_reasoning_governor.py'
+      - 'scripts/detroit_cognitive_society.py'
+      - 'scripts/test_detroit_cognitive_evolution.py'
+      - '.github/workflows/cognitive-evolution-tests.yml'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s scripts -p 'test_detroit_cognitive_evolution.py' -v
