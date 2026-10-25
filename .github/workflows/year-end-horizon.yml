@@ -1,0 +1,31 @@
+name: Agentopia 2046 Recovery and Year 9999 Guard
+on:
+  pull_request:
+    paths:
+      - 'scripts/agentopia_year_end_recovery.py'
+      - 'scripts/agentopia_year_9999_guard.py'
+      - 'scripts/run_detroit_persistent.py'
+      - 'scripts/detroit_world_context.py'
+      - 'tests/test_year_end_horizon.py'
+      - '.github/workflows/year-end-horizon.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/agentopia_year_end_recovery.py'
+      - 'scripts/agentopia_year_9999_guard.py'
+      - 'scripts/run_detroit_persistent.py'
+      - 'scripts/detroit_world_context.py'
+      - 'tests/test_year_end_horizon.py'
+      - '.github/workflows/year-end-horizon.yml'
+permissions:
+  contents: read
+jobs:
+  safe-boundary-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run isolated year-boundary checks
+        run: python3 -m unittest discover -s tests -p 'test_year_end_horizon.py' -v
